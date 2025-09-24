@@ -1,0 +1,20 @@
+# Docker Compose file for a MySQL 8.0 server.
+
+
+services:
+  mysql_db:
+    image: dandefoe/peopleandleave-sqldb:v1
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: tupel0 # <-- IMPORTANT: Change this!
+      MYSQL_DATABASE: PeopleAndLeaveDB # This creates our database automatically.
+    ports:
+      # Exposes the MySQL port to your computer on the standard port 3306.
+      - "3306:3306"
+    volumes:
+      # This saves your database data so it persists even if the container is removed.
+      - mysql-data:/var/lib/mysql
+
+# Defines the named volume for data persistence.
+volumes:
+  mysql-data:
