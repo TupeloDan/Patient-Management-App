@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from database import get_db_connection
 from person_model import Person
 
+
 class PersonData:
     """Manages all database operations for Person objects."""
 
@@ -59,30 +60,37 @@ class PersonData:
             associate_2nd_id=row.get("Associate2ndID"),
         )
 
+    # In person_data.py, replace the get_sorted_people method
+
     def get_sorted_people(self, include_empty_rooms: bool = False) -> list[Person]:
         """
-        Fetches people from the database, sorted by room.
-        By default, it returns only occupied rooms.
+        Fetches all people from the database by calling the sp_GetSortedPeople stored procedure.
         """
         conn = get_db_connection()
         if not conn:
             return []
 
-        query = "SELECT * FROM vw_GetSortedPeople"
         results_list = []
         self._people_cache.clear()
 
         try:
             cursor = conn.cursor(dictionary=True)
-            cursor.execute(query)
-            all_rows = cursor.fetchall()
 
+            # --- CHANGED: Call the stored procedure by name ---
+            cursor.callproc("sp_GetSortedPeople")
+
+            # When using callproc, results must be retrieved from an iterator
+            for result in cursor.stored_results():
+                all_rows = result.fetchall()
+
+            # The rest of the logic remains the same
             for row in all_rows:
                 person = self._load_person_from_row(row)
                 if person:
                     self._people_cache[person.id] = person
                     if include_empty_rooms or person.nhi is not None:
                         results_list.append(person)
+
         except Exception as e:
             print(f"An error occurred while fetching people: {e}")
         finally:
@@ -120,91 +128,68 @@ class PersonData:
                 conn.close()
         return person_stub
 
+    # In person_data.py, replace the update_person method
+
     def update_person(self, person: Person) -> bool:
-        """Updates an existing person's core details in the database."""
-        sql = """UPDATE People SET
-                     NHI = %s, PersonName = %s, LegalStatusID = %s,
-                     IsSpecialPatient = %s, HasVNR = %s, SpecialNotes = %s
-                 WHERE ID = %s"""
-        values = (
-            person.nhi,
-            person.name,
-            person.legal_id,
-            person.is_special_patient,
-            person.has_vnr,
-            person.special_notes,
-            person.id,
-        )
+        """
+        Updates an existing person's record by calling the sp_UpdatePerson stored procedure.
+        """
         conn = get_db_connection()
         if not conn:
             return False
 
         try:
             cursor = conn.cursor()
-            conn.start_transaction()
-            check_sql = "SELECT ID FROM People WHERE NHI = %s AND ID <> %s"
-            cursor.execute(check_sql, (person.nhi, person.id))
-            if cursor.fetchone():
-                raise ValueError(
-                    f"NHI '{person.nhi}' is already in use by another person."
-                )
-            cursor.execute(sql, values)
+
+            # Create a tuple of arguments in the exact order the procedure expects them
+            args = (
+                person.id,
+                person.nhi,
+                person.name,
+                person.legal_id,
+                person.is_special_patient,
+                person.has_vnr,
+                person.special_notes,
+            )
+
+            # Call the stored procedure
+            cursor.callproc("sp_UpdatePerson", args)
+
+            # Important: You must commit any changes made by a stored procedure
             conn.commit()
+
+            # Update the in-memory cache
             self._people_cache[person.id] = person
             print(f"Successfully updated person: {person.name}")
             return True
+
         except Exception as e:
             print(f"Error updating person: {e}")
-            conn.rollback()
+            # No need for rollback() here as commit() won't be reached on error
             return False
         finally:
             if conn and conn.is_connected():
                 cursor.close()
                 conn.close()
 
+    # In person_data.py, replace the move_person method
+
     def move_person(self, person_to_move: Person, destination_room_name: str) -> bool:
-        """Moves a person from their current room to a new room in a single transaction."""
-        if person_to_move.room == destination_room_name:
-            print("Error: Source and destination rooms are the same.")
-            return False
-
-        destination_room = self.get_person_by_room(destination_room_name)
-        if not destination_room:
-            print(f"Error: Destination room '{destination_room_name}' not found.")
-            return False
-
-        if destination_room.nhi is not None:
-            print(
-                f"Error: Destination room '{destination_room_name}' is already occupied."
-            )
-            return False
-
-        sql_clear_old_room = """UPDATE People SET
-            NHI=NULL, PersonName=NULL, LegalStatusID=NULL, HasVNR=NULL, TreatmentPlans=NULL, 
-            HoNos=NULL, UDSDue=NULL, RelSecurity=NULL, Profile=NULL, Metobolic=NULL, 
-            Bloods=NULL, FlightRisk=NULL, UDSFrequency=NULL, MDTDay=NULL, LeaveReturn=NULL, 
-            ClinicianID=NULL, CaseManagerID=NULL, CaseManager2ndID=NULL, AssociateID=NULL, 
-            Associate2ndID=NULL, `Progress%`=NULL, SpecialNotes=NULL, IsSpecialPatient=NULL
-            WHERE ID = %s"""
-
-        sql_populate_new_room = """UPDATE People SET
-            NHI=%s, PersonName=%s, LegalStatusID=%s, HasVNR=%s, TreatmentPlans=%s, 
-            HoNos=%s, UDSDue=%s, RelSecurity=%s, Profile=%s, Metobolic=%s, 
-            Bloods=%s, FlightRisk=%s, UDSFrequency=%s, MDTDay=%s, 
-            ClinicianID=%s, CaseManagerID=%s, CaseManager2ndID=%s, AssociateID=%s, 
-            Associate2ndID=%s, `Progress%`=%s, SpecialNotes=%s, IsSpecialPatient=%s
-            WHERE ID = %s"""
-
+        """
+        Moves a person to a new room by calling the sp_MovePerson stored procedure.
+        Returns True on success, False on failure.
+        """
         conn = get_db_connection()
         if not conn:
             return False
 
         try:
             cursor = conn.cursor()
-            conn.start_transaction()
-            cursor.execute(sql_clear_old_room, (person_to_move.id,))
 
-            values_to_populate = (
+            # Prepare the arguments tuple in the exact order the procedure expects.
+            # The last argument (0) is a placeholder for the OUT parameter.
+            args = (
+                person_to_move.id,
                 person_to_move.nhi,
                 person_to_move.name,
                 person_to_move.legal_id,
@@ -227,28 +212,31 @@ class PersonData:
                 person_to_move.progress_percent,
                 person_to_move.special_notes,
                 person_to_move.is_special_patient,
-                destination_room.id,
+                destination_room_name,
+                0,  # Placeholder for the p_new_id OUT parameter
             )
-            cursor.execute(sql_populate_new_room, values_to_populate)
+
+            # Call the stored procedure and get the results
+            result_args = cursor.callproc("sp_MovePerson", args)
+            new_id = result_args[
+                24
+            ]  # The new ID is the 25th element in the returned tuple
 
             conn.commit()
             print(
-                f"Successfully moved {person_to_move.name} from room {person_to_move.room} to {destination_room_name}."
+                f"Successfully moved {person_to_move.name} to {destination_room_name}."
             )
 
-            self._people_cache[person_to_move.id].nhi = (
-                None  # Mark old room in cache as empty
-            )
-            person_to_move.id = destination_room.id
+            # Update the in-memory cache
+            self._people_cache[person_to_move.id].nhi = None  # Mark old room as empty
+            person_to_move.id = new_id
             person_to_move.room = destination_room_name
-            self._people_cache[destination_room.id] = (
-                person_to_move  # Update cache with new info
-            )
+            self._people_cache[new_id] = person_to_move
+
             return True
 
         except Exception as e:
             print(f"Error moving person: {e}")
-            conn.rollback()
             return False
         finally:
             if conn and conn.is_connected():
@@ -257,92 +245,54 @@ class PersonData:
 
     # In person_data.py, add this inside the PersonData class
 
+    # In person_data.py, replace the assign_person_to_room method
+
     def assign_person_to_room(
         self, new_person_details: Person, destination_room_name: str
     ) -> bool:
         """
-        Assigns a new person to a specified empty room.
-
-        Args:
-            new_person_details: A Person object containing the new person's info (name, NHI, etc.).
-            destination_room_name: The name of the empty room to assign them to.
-
-        Returns:
-            True on success, False on failure.
+        Assigns a new person to a specified empty room by calling the sp_AssignPersonToRoom stored procedure.
         """
-        # --- 1. Validation Checks ---
-        if not new_person_details or not new_person_details.nhi:
-            print("Error: New person details are incomplete.")
-            return False
-
-        destination_room = self.get_person_by_room(destination_room_name)
-        if not destination_room:
-            print(f"Error: Destination room '{destination_room_name}' not found.")
-            return False
-
-        if destination_room.nhi is not None:
-            print(
-                f"Error: Destination room '{destination_room_name}' is already occupied."
-            )
-            return False
-
-        # --- 2. Define SQL Query ---
-        # This query updates the empty room's record with the new person's data
-        sql = """UPDATE People SET
-                     NHI=%s, PersonName=%s, LegalStatusID=%s, HasVNR=%s, IsSpecialPatient=%s,
-                     TreatmentPlans=%s, HoNos=%s, UDSDue=%s, `Progress%`=%s, SpecialNotes=%s
-                 WHERE ID = %s"""
-
-        # --- 3. Execute the Transaction ---
         conn = get_db_connection()
         if not conn:
             return False
 
         try:
             cursor = conn.cursor()
-            conn.start_transaction()
 
-            # Check for duplicate NHI across all other records
-            check_sql = "SELECT ID FROM People WHERE NHI = %s"
-            cursor.execute(check_sql, (new_person_details.nhi,))
-            if cursor.fetchone():
-                raise ValueError(
-                    f"NHI '{new_person_details.nhi}' is already in use by another person."
-                )
-
-            today = datetime.now().date()
-            values_to_update = (
+            # Prepare arguments in the exact order the procedure expects.
+            # The last argument (0) is a placeholder for the OUT parameter.
+            args = (
                 new_person_details.nhi,
                 new_person_details.name,
                 new_person_details.legal_id,
                 new_person_details.has_vnr,
                 new_person_details.is_special_patient,
-                today,
-                today,
-                today,  # Set default due dates to today
-                0.0,  # Default progress
                 new_person_details.special_notes,
-                destination_room.id,  # The ID of the empty room's record
+                destination_room_name,
+                0,  # Placeholder for p_record_id OUT parameter
             )
-            cursor.execute(sql, values_to_update)
+
+            # Call the stored procedure and get the results
+            result_args = cursor.callproc("sp_AssignPersonToRoom", args)
+            new_id = result_args[
+                7
+            ]  # The new ID is the 8th element in the returned tuple
 
             conn.commit()
             print(
                 f"Successfully assigned {new_person_details.name} to room {destination_room_name}."
             )
 
-            # --- 4. Update In-Memory Cache ---
-            # Update the passed-in object with its new database ID and room
-            new_person_details.id = destination_room.id
+            # Update the in-memory cache
+            new_person_details.id = new_id
             new_person_details.room = destination_room_name
-            # Add the now-complete person object to the cache
-            self._people_cache[destination_room.id] = new_person_details
+            self._people_cache[new_id] = new_person_details
 
             return True
 
         except Exception as e:
             print(f"Error assigning person: {e}")
-            conn.rollback()
             return False
         finally:
             if conn and conn.is_connected():
@@ -351,51 +301,35 @@ class PersonData:
 
     # In person_data.py, add this inside the PersonData class
 
+    # In person_data.py, replace the remove_person method
+
     def remove_person(self, person_id: int) -> bool:
         """
-        Clears a person's data from a room record, effectively "removing" them.
-        This is a transactional update, not a DELETE.
-
-        Args:
-            person_id: The ID of the record (room) to clear.
-
-        Returns:
-            True on success, False on failure.
+        Clears a person's data from a room by calling the sp_RemovePerson stored procedure.
         """
-        # This SQL is identical to the one used in the move_person method
-        sql_clear_room = """UPDATE People SET
-            NHI=NULL, PersonName=NULL, LegalStatusID=NULL, HasVNR=NULL, TreatmentPlans=NULL, 
-            HoNos=NULL, UDSDue=NULL, RelSecurity=NULL, Profile=NULL, Metobolic=NULL, 
-            Bloods=NULL, FlightRisk=NULL, UDSFrequency=NULL, MDTDay=NULL, LeaveReturn=NULL, 
-            ClinicianID=NULL, CaseManagerID=NULL, CaseManager2ndID=NULL, AssociateID=NULL, 
-            Associate2ndID=NULL, `Progress%`=NULL, SpecialNotes=NULL, IsSpecialPatient=NULL
-            WHERE ID = %s"""
-
         conn = get_db_connection()
         if not conn:
             return False
 
         try:
             cursor = conn.cursor()
-            conn.start_transaction()
 
-            cursor.execute(sql_clear_room, (person_id,))
+            # The stored procedure only needs one argument: the person's record ID.
+            args = (person_id,)
+            cursor.callproc("sp_RemovePerson", args)
 
             conn.commit()
             print(f"Successfully removed person from record ID: {person_id}")
 
             # Update the in-memory cache
             if person_id in self._people_cache:
-                # Instead of deleting, we update the cached object to be "empty"
                 self._people_cache[person_id].nhi = None
                 self._people_cache[person_id].name = None
-                # ... etc for other fields if necessary
 
             return True
 
         except Exception as e:
             print(f"Error removing person: {e}")
-            conn.rollback()
             return False
         finally:
             if conn and conn.is_connected():
@@ -628,43 +562,3 @@ class PersonData:
             if conn and conn.is_connected():
                 cursor.close()
                 conn.close()
-
-
-# --- This block allows you to run the class as a command-line tool ---
-if __name__ == "__main__":
-    import sys
-
-    # Check if the user provided the correct number of arguments
-    if len(sys.argv) != 4:
-        print("Usage: python person_data.py <person_id> <field_name> <new_value>")
-        print("Example: python person_data.py 1 rel_security True")
-        sys.exit(1)  # Exit the script if arguments are wrong
-
-    # --- Parse the arguments from the command line ---
-    try:
-        person_id_arg = int(sys.argv[1])
-        field_name_arg = sys.argv[2]
-        # Convert the string 'True' or 'False' to a boolean
-        new_value_arg = sys.argv[3].lower() in ("true", "1", "t")
-    except ValueError:
-        print("Error: person_id must be a number.")
-        sys.exit(1)
-
-    # --- Create an instance of the data manager and call the method ---
-    print(
-        f"Attempting to update field '{field_name_arg}' for person ID {person_id_arg} to '{new_value_arg}'..."
-    )
-
-    person_data_manager = PersonData()
-
-    # We need to load the cache so the in-memory update works correctly
-    person_data_manager.get_sorted_people(include_empty_rooms=True)
-
-    success = person_data_manager.update_field(
-        person_id=person_id_arg, field_name=field_name_arg, new_value=new_value_arg
-    )
-
-    if success:
-        print("✅ Update completed successfully.")
-    else:
-        print("❌ Update failed. Check the error message above.")
