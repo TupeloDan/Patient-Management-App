@@ -338,6 +338,8 @@ class PersonData:
 
     # In person_data.py, inside the PersonData class
 
+    # In person_data.py, replace the update_staff_assignments method
+
     def update_staff_assignments(
         self,
         person_id: int,
@@ -348,38 +350,23 @@ class PersonData:
         assoc_2nd_id: int,
     ) -> bool:
         """
-        Updates all staff assignments for a single person record in the database.
-        Returns True on success, False on failure.
+        Updates staff assignments for a person by calling the sp_UpdateStaffAssignments stored procedure.
         """
-        # --- RESTORED: These variable definitions were missing ---
-        sql = """UPDATE People SET
-                     ClinicianID = %s,
-                     CaseManagerID = %s,
-                     CaseManager2ndID = %s,
-                     AssociateID = %s,
-                     Associate2ndID = %s
-                 WHERE ID = %s"""
-
-        values = (clinician_id, cm_id, cm_2nd_id, assoc_id, assoc_2nd_id, person_id)
-        # --- END RESTORED SECTION ---
-
         conn = get_db_connection()
         if not conn:
             return False
 
         try:
             cursor = conn.cursor()
-            conn.start_transaction()
-            print(f"DEBUG: Executing UPDATE with values: {values}")
-            cursor.execute(sql, values)
 
-            if cursor.rowcount == 0:
-                raise Exception(
-                    f"Update failed because no record with ID {person_id} was found."
-                )
+            # Prepare the tuple of arguments in the exact order the procedure expects
+            args = (person_id, clinician_id, cm_id, cm_2nd_id, assoc_id, assoc_2nd_id)
 
+            # Call the stored procedure
+            cursor.callproc("sp_UpdateStaffAssignments", args)
+
+            # Commit the changes made by the procedure
             conn.commit()
-
             print(f"Successfully updated staff assignments for person ID: {person_id}")
 
             # Update the in-memory cache
@@ -395,7 +382,6 @@ class PersonData:
 
         except Exception as e:
             print(f"Error updating staff assignments: {e}")
-            conn.rollback()
             return False
         finally:
             if conn and conn.is_connected():

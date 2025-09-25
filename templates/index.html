@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Whiteboard</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="header-container">
+        <img src="{{ url_for('static', filename='R.png') }}" alt="Logo" class="logo">
+        <h1>Te Whare Manaaki Bedboard</h1>
+    </header>
+
+    <main>
+        <table id="whiteboard-table">
+            <thead>
+                <tr>
+                    <th><div>Room</div></th>
+                    <th><div>NHI</div></th>
+                    <th><div>Name</div></th>
+                    <th><div>Legal</div></th>
+                    <th><div>VNR</div></th>
+                    <th><div>Treatment Plan</div></th>
+                    <th><div>HoNos</div></th>
+                    <th><div>UDS Due</div></th>
+                    <th><div>Rel Security</div></th>
+                    <th><div>Profile</div></th>
+                    <th><div>Bloods</div></th>
+                    <th><div>Metabolic</div></th>
+                    <th><div>Flight Risk</div></th>
+                    <th><div>UDS Freq</div></th>
+                    <th><div>MDT Day</div></th>
+                    <th><div>Leave Return</div></th>
+                    <th><div>Progress</div></th>
+                    <th><div>Clinician</div></th>
+                    <th><div>Case Manager</div></th>
+                    <th><div>Associates</div></th>
+                    <th><div>Special Notes</div></th>
+                </tr>
+            </thead>
+            <tbody id="whiteboard-body"></tbody>
+        </table>
+    </main>
+
+    <footer class="footer-container">
+        <div id="on-leave-section" class="footer-panel">
+            <h2>On Leave</h2>
+            <div id="on-leave-list"></div>
+        </div>
+        <div id="notices-section" class="footer-panel">
+            <h2>Notices</h2>
+            <ul id="notices-list"></ul>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

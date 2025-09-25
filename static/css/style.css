@@ -1,0 +1,189 @@
+
+.header-container {
+  /* 1. Use Flexbox for easy alignment */
+  display: flex;
+
+  /* 2. Center the content horizontally */
+  justify-content: center;
+
+  /* 3. Align the image and text vertically */
+  align-items: center;
+
+  /* 4. Add some space between the image and the text */
+  gap: 15px; /* Adjust as needed */
+  
+  /* Optional: Add some padding and a bottom border */
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+}
+
+/* Optional: Remove default margin from the heading */
+.header-container h1 {
+  margin: 0;
+  color: #00556E ;/* Use the same color as the header background */
+  font-size: 48px; /* Adjust as needed */
+}
+
+/* Optional: Set a specific height for your image */
+.header-container img {
+  height: 48px; /* Adjust as needed */
+}
+
+body {
+    background-color: #aadceb;
+    font-family: 'Roboto', sans-serif; /* Use Roboto as the primary font */
+    font-size: 18px; /* Increase the base font size for TV viewing */
+    color: #000;
+
+    /* Optional: These can make fonts render more smoothly */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+#whiteboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed; /* This is the key change */
+}
+th {
+    background-color: #00556E;
+    color: rgb(255, 253, 253);
+    padding: 8px;
+    text-align: left;
+    font-size: 18px;
+    font-weight: normal;
+
+}
+td {
+    padding: 4px;
+    border: 1px solid white;
+}
+.font-alert-red {
+    color: #9C0006 !important;
+    font-weight: bold;
+}
+.task-done {
+    background-color: #a6dbb2; /* Light Green */
+    color: transparent;        /* This hides the "true" text */
+}
+
+.task-not-done {
+    background-color: #bd9090; /* Light Red */
+    color: transparent;        /* This hides the "false" text */
+}
+.date-overdue {
+    background-color: #FFC7CE; /* Light Red */
+    color: #9C0006;
+    font-weight: bold;
+}
+.font-alert-yellow {
+    color: #eedf15;
+    font-weight: bold;
+}
+.font-alert-orange {
+    color: #FF8C00;
+    font-weight: bold;
+}
+/* --- Styles for Diagonal Headers --- */
+
+/* 1. Give the header row enough height for the rotated text */
+#whiteboard-table thead tr {
+    height: 160px; 
+}
+
+/* 2. Prepare the header cells for the rotated content */
+#whiteboard-table th {
+    vertical-align: bottom; /* Aligns text to the bottom before rotation */
+    padding: 0;
+    position: relative;
+}
+
+/* 3. Rotate the div inside the header cell */
+#whiteboard-table th > div {
+    position: relative;
+    left: 15px;
+    bottom: 0px;
+    padding-left: 5px; /* Adds a little space from the left edge */
+    white-space: nowrap; /* Prevents the text from wrapping */
+    transform-origin: left bottom; /* Pivots the rotation from the bottom-left corner */
+    transform: rotate(-65deg);
+    width: auto; /* Allow the div to size itself based on content */
+}
+/* --- Styles for Uniform Task Columns --- */
+
+/* Target the 5 task columns (8th through 12th) in both the header and body */
+#whiteboard-table th:nth-child(n+9):nth-child(-n+13),
+#whiteboard-table td:nth-child(n+9):nth-child(-n+13) {
+    width: 80px;  /* Set a narrow, fixed width */
+    text-align: center; /* Center the content (the color block) */
+}
+/* ==========================================================================
+   Footer Panels (On Leave & Notices)
+   ========================================================================== */
+
+.footer-container {
+    display: flex;          /* This is the key: it turns the container into a flexbox. */
+    justify-content: space-between; /* Distributes space between the items. */
+    padding: 20px;          /* Adds some space around the container. */
+    gap: 20px;              /* Creates a gap between the two columns. */
+    background-color: #aadceb;
+   ; /* A light teal background similar to your image. */
+    color: #004d40;         /* A dark teal text color for good contrast. */
+    font-family: 'Roboto', sans-serif;
+}
+
+/*.footer-panel {
+    Each panel will take up a portion of the available space. 
+    We'll give the "On Leave" panel more space. 
+}*/
+
+#on-leave-section {
+    flex-basis: 60%; /* Takes up 60% of the width */
+}
+
+#notices-section {
+    flex-basis: 35%; /* Takes up 35% of the width (leaving a 5% gap) */
+}
+
+/* Styling for individual leave entries for better readability */
+.leave-entry {
+    margin-bottom: 1em; /* Adds space between each person on leave */
+}
+
+.leave-description {
+    padding-left: 1em;  /* Indents the description line */
+    font-style: italic;
+}
+
+/* ==========================================================================
+   Data Bar for Task Percentage
+   ========================================================================== */
+
+.data-bar-container {
+    position: relative; /* Needed to position the text on top */
+    width: 100%;
+    height: 40px;
+    background-color: #aadceb; /* Light grey background/track */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    overflow: hidden; /* Keeps the fill bar inside the rounded corners */
+}
+
+.data-bar-fill {
+    height: 100%;
+    /* A blue gradient similar to the Excel default */
+    background: linear-gradient(to right, #66b2ff, #007bff);
+    transition: width 0.5s ease-in-out; /* Adds a nice animation effect */
+}
+
+.data-bar-text {
+    position: absolute; /* Positions the text over the bar */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Perfectly centers the text */
+    color: #333; /* Dark text for readability */
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* NEW: Apply a consistent border to all header and data cells */
