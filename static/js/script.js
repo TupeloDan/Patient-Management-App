@@ -98,10 +98,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const row = document.createElement('tr');
                 
                 const formatDate = (d) => d ? new Date(d).toLocaleDateString() : '';
-                const dueTimeObject = parseTimeValue(person.LeaveReturn);
+                // CORRECTED: Use lowercase 'leave_return'
+                const dueTimeObject = parseTimeValue(person.leave_return);
                 const formattedTime = dueTimeObject ? dueTimeObject.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
                 
-                const percentValue = person['Progress%'] || 0;
+                // CORRECTED: Use lowercase 'progress_percent'
+                const percentValue = person.progress_percent || 0;
                 let dataBarHtml = '';
                 if (percentValue > 0) {
                     dataBarHtml = `
@@ -112,51 +114,54 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 }
 
+                // --- CORRECTED All property names to lowercase/snake_case ---
                 row.innerHTML = `
-                    <td>${person.Room || ''}</td>
-                    <td>${person.NHI || ''}</td>
-                    <td>${person.PersonName || ''}</td>
-                    <td>${person.Legal || ''}</td>
-                    <td>${person.HasVNR ? 'VNR' : ''}</td>
-                    <td>${formatDate(person.TreatmentPlans)}</td>
-                    <td>${formatDate(person.HoNos)}</td>
-                    <td>${formatDate(person['UDSDue'])}</td>
+                    <td>${person.room || ''}</td>
+                    <td>${person.nhi || ''}</td>
+                    <td>${person.name || ''}</td>
+                    <td>${person.legal_id || ''}</td> 
+                    <td>${person.has_vnr ? 'VNR' : ''}</td>
+                    <td>${formatDate(person.treatment_plans_due)}</td>
+                    <td>${formatDate(person.honos_due)}</td>
+                    <td>${formatDate(person.uds_due)}</td>
                     <td></td><td></td><td></td><td></td><td></td>
-                    <td>${person['UDSFrequency'] || ''}</td>
-                    <td>${person['MDTDay'] || ''}</td>
+                    <td>${person.uds_frequency || ''}</td>
+                    <td>${person.mdt_day || ''}</td>
                     <td>${formattedTime}</td>
                     <td>${dataBarHtml}</td>
-                    <td>${person.ClinicianName || ''}</td>
-                    <td>${person.CaseManagers || ''}</td>
-                    <td>${person.Associates || ''}</td>
-                    <td>${person.SpecialNotes || ''}</td>
-                    
-                   
+                    <td>${person.clinician_name || ''}</td>
+                    <td>${person.case_managers || ''}</td>
+                    <td>${person.associates || ''}</td>
+                    <td>${person.special_notes || ''}</td>
                 `;
                 
                 whiteboardBody.appendChild(row);
 
-                // --- APPLY ALL CONDITIONAL FORMATTING ---
+                // --- APPLY ALL CONDITIONAL FORMATTING (with corrected keys) ---
 
-                if (person.IsSpecialPatient) {
+                // CORRECTED: is_special_patient
+                if (person.is_special_patient) {
                     row.cells[2].classList.add('font-alert-red');
                     row.cells[3].classList.add('font-alert-red');
                 }
 
-                if (person.HasVNR) {
+                // CORRECTED: has_vnr
+                if (person.has_vnr) {
                     row.cells[4].classList.add('font-alert-red');
                 }
 
-                const taskData = [person['RelSecurity'], person.Profile, person.Bloods, person.Metobolic, person['FlightRisk']];
+                // CORRECTED: rel_security, profile, bloods, metobolic, flight_risk
+                const taskData = [person.rel_security, person.profile, person.bloods, person.metobolic, person.flight_risk];
                 [8, 9, 10, 11, 12].forEach((colIndex, i) => {
-                    if (person.NHI) {
+                    if (person.nhi) {
                         row.cells[colIndex].classList.add(taskData[i] ? 'task-done' : 'task-not-done');
                     }
                 });
                 
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                const dateFields = { 5: person.TreatmentPlans, 6: person.HoNos, 7: person['UDSDue'] };
+                // CORRECTED: treatment_plans_due, honos_due, uds_due
+                const dateFields = { 5: person.treatment_plans_due, 6: person.honos_due, 7: person.uds_due };
                 for (const colIndex in dateFields) {
                     const dateValue = dateFields[colIndex];
                     if (dateValue && new Date(dateValue) < today) {
