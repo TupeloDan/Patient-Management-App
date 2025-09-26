@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main Bed Board Editor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main-editor.css') }}">
+</head>
+<body>
+    <header class="header-container">
+        <h1>Main Bed Board Editor</h1>
+    </header>
+
+    <div class="main-editor-layout">
+        <div class="patient-list-column">
+            <h2>Occupied Rooms</h2>
+            <div id="patient-list-container">
+                </div>
+        </div>
+
+        <div id="details-pane" class="details-pane-column hidden">
+            
+            <div class="details-header-container">
+                <h2 id="details-header">Select a patient to begin...</h2>
+                <span id="special-patient-label" class="status-label">Special Patient</span>
+            </div>
+
+            <div class="tasks-due-grid">
+                <div class="task-item">
+                    <label>Treatment Plan Last Updated:</label>
+                    <span id="last-plan-date">--</span>
+                    <label>Due:</label>
+                    <span id="plan-due-date">--</span>
+                </div>
+                <div class="task-item">
+                    <label>HoNos Last Updated:</label>
+                    <span id="last-honos-date">--</span>
+                    <label>Due:</label>
+                    <span id="honos-due-date">--</span>
+                </div>
+                <div class="task-item">
+                    <label>UDS Last Updated:</label>
+                    <span id="last-uds-date">--</span>
+                    <label>Due:</label>
+                    <span id="uds-due-date">--</span>
+                </div>
+                <div class="task-item">
+                    <label for="uds-frequency-select">UDS Frequency:</label>
+                    <select id="uds-frequency-select"></select>
+                </div>
+                <div class="task-item">
+                    <label for="mdt-day-select">MDT Day:</label>
+                    <select id="mdt-day-select"></select>
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="tasks-to-complete-grid">
+                <div class="task-toggle-item">
+                    <span>Relational Security:</span>
+                    <button id="rel-security-toggle" class="task-toggle-btn">Not Done</button>
+                </div>
+                <div class="task-toggle-item">
+                    <span>Patient Profile:</span>
+                    <button id="profile-toggle" class="task-toggle-btn">Not Done</button>
+                </div>
+                <div class="task-toggle-item">
+                    <span>Metabolics:</span>
+                    <button id="metobolic-toggle" class="task-toggle-btn">Not Done</button>
+                </div>
+                <div class="task-toggle-item">
+                    <span>Bloods:</span>
+                    <button id="bloods-toggle" class="task-toggle-btn">Not Done</button>
+                </div>
+                <div class="task-toggle-item">
+                    <span>Flight Risk:</span>
+                    <button id="flight-risk-toggle" class="task-toggle-btn">Not Done</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main-editor.js') }}"></script>
+</body>
+</html>

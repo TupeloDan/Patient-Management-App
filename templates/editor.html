@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bed Board Editor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
+</head>
+<body>
+    <header class="header-container">
+        <h1>Editor: Assign Staff Roles</h1>
+    </header>
+
+    <main class="editor-container">
+        <div class="form-group">
+            <label for="patient-select">Select Patient:</label>
+            <select id="patient-select"></select>
+        </div>
+
+        <div id="assignment-form" class="hidden">
+            <div class="form-group">
+                <label for="clinician-select">Responsible Clinician:</label>
+                <select id="clinician-select"></select>
+            </div>
+
+            <div class="assignment-columns">
+                <div class="staff-list-container">
+                    <h3>Available Staff</h3>
+                    <select id="available-staff-list" multiple></select>
+                </div>
+
+                <div class="assignment-buttons">
+                    <button id="assign-cm">&gt;&gt; Assign Case Manager</button>
+                    <button id="remove-cm">&lt;&lt; Remove Case Manager</button>
+                    <button id="assign-assoc">&gt;&gt; Assign Associate</button>
+                    <button id="remove-assoc">&lt;&lt; Remove Associate</button>
+                </div>
+
+                <div class="staff-list-container">
+                    <h3>Case Managers</h3>
+                    <select id="casemanager-list" multiple></select>
+                    <h3>Associates</h3>
+                    <select id="associate-list" multiple></select>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button id="save-assignments">Save</button>
+                <button id="cancel-assignments">Cancel</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+</body>
+</html>

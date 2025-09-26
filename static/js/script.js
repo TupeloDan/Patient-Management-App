@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (timeString.includes('T') || timeString.includes(':')) {
             const date = new Date(timeString);
             return !isNaN(date.getTime()) ? date : null;
-        } 
+        }
         // Fallback for "HHmm" format
         else if (timeString.length >= 4) {
             const hours = parseInt(timeString.substring(0, 2), 10);
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch(NOTICES_API)
             .then(response => response.json())
             .then(notices => {
-                noticesList.innerHTML = ''; 
+                noticesList.innerHTML = '';
                 if (notices.length === 0) {
                     noticesList.innerHTML = '<li>No active notices.</li>';
                 } else {
@@ -85,82 +85,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function refreshWhiteboard() {
         try {
-            const response = await fetch(WHITEBOARD_API);
+            const response = await fetch('/data'); // Changed to use the /data endpoint
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
-            
+
             const whiteboardBody = document.getElementById('whiteboard-body');
             if (!whiteboardBody) return;
-           
+
             whiteboardBody.innerHTML = '';
 
             data.forEach(person => {
                 const row = document.createElement('tr');
-                
+
                 const formatDate = (d) => d ? new Date(d).toLocaleDateString() : '';
-                // CORRECTED: Use lowercase 'leave_return'
                 const dueTimeObject = parseTimeValue(person.leave_return);
                 const formattedTime = dueTimeObject ? dueTimeObject.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-                
-                // CORRECTED: Use lowercase 'progress_percent'
+
                 const percentValue = person.progress_percent || 0;
                 let dataBarHtml = '';
                 if (percentValue > 0) {
                     dataBarHtml = `
-                        <div class="data-bar-container">
-                            <div class="data-bar-fill" style="width: ${percentValue * 100}%;"></div>
-                            <div class="data-bar-text">${(percentValue * 100).toFixed(0)}%</div>
-                        </div>
-                    `;
+                    <div class="data-bar-container">
+                        <div class="data-bar-fill" style="width: ${percentValue * 100}%;"></div>
+                        <div class="data-bar-text">${(percentValue * 100).toFixed(0)}%</div>
+                    </div>
+                `;
                 }
 
-                // --- CORRECTED All property names to lowercase/snake_case ---
+                // --- CORRECTED to use user-friendly names from the view ---
                 row.innerHTML = `
-                    <td>${person.room || ''}</td>
-                    <td>${person.nhi || ''}</td>
-                    <td>${person.name || ''}</td>
-                    <td>${person.legal_id || ''}</td> 
-                    <td>${person.has_vnr ? 'VNR' : ''}</td>
-                    <td>${formatDate(person.treatment_plans_due)}</td>
-                    <td>${formatDate(person.honos_due)}</td>
-                    <td>${formatDate(person.uds_due)}</td>
-                    <td></td><td></td><td></td><td></td><td></td>
-                    <td>${person.uds_frequency || ''}</td>
-                    <td>${person.mdt_day || ''}</td>
-                    <td>${formattedTime}</td>
-                    <td>${dataBarHtml}</td>
-                    <td>${person.clinician_name || ''}</td>
-                    <td>${person.case_managers || ''}</td>
-                    <td>${person.associates || ''}</td>
-                    <td>${person.special_notes || ''}</td>
-                `;
-                
+                <td>${person.room || ''}</td>
+                <td>${person.nhi || ''}</td>
+                <td>${person.name || ''}</td>
+                <td>${person.legal || ''}</td> 
+                <td>${person.has_vnr ? 'VNR' : ''}</td>
+                <td>${formatDate(person.treatment_plans_due)}</td>
+                <td>${formatDate(person.honos_due)}</td>
+                <td>${formatDate(person.uds_due)}</td>
+                <td></td><td></td><td></td><td></td><td></td>
+                <td>${person.uds_frequency || ''}</td>
+                <td>${person.mdt_day || ''}</td>
+                <td>${formattedTime}</td>
+                <td>${dataBarHtml}</td>
+                <td>${person.clinician_name || ''}</td>
+                <td>${person.case_managers || ''}</td>
+                <td>${person.associates || ''}</td>
+                <td>${person.special_notes || ''}</td>
+            `;
+
                 whiteboardBody.appendChild(row);
 
-                // --- APPLY ALL CONDITIONAL FORMATTING (with corrected keys) ---
-
-                // CORRECTED: is_special_patient
+                // --- Conditional Formatting (no changes needed here, but kept for context) ---
                 if (person.is_special_patient) {
                     row.cells[2].classList.add('font-alert-red');
                     row.cells[3].classList.add('font-alert-red');
                 }
-
-                // CORRECTED: has_vnr
                 if (person.has_vnr) {
                     row.cells[4].classList.add('font-alert-red');
                 }
-
-                // CORRECTED: rel_security, profile, bloods, metobolic, flight_risk
                 const taskData = [person.rel_security, person.profile, person.bloods, person.metobolic, person.flight_risk];
                 [8, 9, 10, 11, 12].forEach((colIndex, i) => {
                     if (person.nhi) {
                         row.cells[colIndex].classList.add(taskData[i] ? 'task-done' : 'task-not-done');
                     }
                 });
-                
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                // CORRECTED: treatment_plans_due, honos_due, uds_due
                 const dateFields = { 5: person.treatment_plans_due, 6: person.honos_due, 7: person.uds_due };
                 for (const colIndex in dateFields) {
                     const dateValue = dateFields[colIndex];
@@ -168,7 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         row.cells[colIndex].classList.add('date-overdue');
                     }
                 }
-
                 if (dueTimeObject) {
                     const currentTime = new Date();
                     if (currentTime > dueTimeObject) {
@@ -183,13 +172,13 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error refreshing whiteboard:', error);
         }
     }
-    
+
     // --- INITIAL LOAD AND REFRESH INTERVALS ---
     refreshWhiteboard();
     loadNotices();
     loadOnLeaveData();
-    
+
     setInterval(refreshWhiteboard, 5000);
-    setInterval(loadNotices, 15000); 
+    setInterval(loadNotices, 15000);
     setInterval(loadOnLeaveData, 5000);
 });

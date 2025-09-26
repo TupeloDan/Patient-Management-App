@@ -1,25 +1,25 @@
 import json
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
+from datetime import date, datetime
 
-# --- Import our new MySQL data managers ---
+# --- Import our data managers ---
 from person_data import PersonData
 from person_model import Person
 from leave_record_data import LeaveRecordData
 from notice_data import NoticeData
+from staff_data import StaffData
 
 
-# A helper function to handle date serialization
+# --- Helper function for JSON serialization ---
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
-    from datetime import date, datetime
-
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
     raise TypeError("Type %s not serializable" % type(obj))
 
 
-# --- FLASK APP INITIALIZATION ---
+# --- Flask App Initialization ---
 app = Flask(__name__, template_folder="templates")
 CORS(app)
 
@@ -27,27 +27,24 @@ CORS(app)
 person_manager = PersonData()
 leave_manager = LeaveRecordData()
 notice_manager = NoticeData()
+staff_manager = StaffData()
 
-
-# --- DISPLAY ROUTES (from your original app) ---
+# ===================================================================
+# --- DISPLAY APP ROUTES ---
+# ===================================================================
 
 
 @app.route("/")
 def index():
-    """Renders the main HTML page."""
+    """Renders the main display HTML page."""
     return render_template("index.html")
 
 
 @app.route("/data")
 def get_whiteboard_data():
-    """
-    Fetches the main whiteboard data from MySQL.
-    This now calls our PersonData manager instead of using pyodbc.
-    """
+    """Fetches the main whiteboard data from MySQL for the display."""
     try:
-        # We fetch the full list of people, including empty rooms for the display
         people_list = person_manager.get_sorted_people(include_empty_rooms=True)
-        # Convert objects to dictionaries for JSON serialization
         people_dicts = [p.__dict__ for p in people_list]
         people_json = json.dumps(people_dicts, default=json_serial)
         return app.response_class(
@@ -80,12 +77,20 @@ def get_on_leave_data():
         return jsonify({"error": str(e)}), 500
 
 
-# --- EDITOR API ENDPOINTS (our new code) ---
+# ===================================================================
+# --- EDITOR APP ROUTES & API ---
+# ===================================================================
+
+
+@app.route("/editor")
+def editor():
+    """Renders the main editor HTML page."""
+    return render_template("editor.html")
 
 
 @app.route("/api/people", methods=["GET"])
 def get_people():
-    """API endpoint to get the list of all people."""
+    """API endpoint to get the list of all people for the editor."""
     include_empty = request.args.get("include_empty", "false").lower() == "true"
     people_list = person_manager.get_sorted_people(include_empty_rooms=include_empty)
     people_json = json.dumps([p.__dict__ for p in people_list], default=json_serial)
@@ -94,53 +99,48 @@ def get_people():
     )
 
 
-@app.route("/api/people/<int:person_id>", methods=["GET"])
-def get_person(person_id):
-    """API endpoint to get details for a single person."""
-    person = person_manager.get_person_by_id(person_id)
-    if person:
-        person_json = json.dumps(person.__dict__, default=json_serial)
-        return app.response_class(
-            response=person_json, status=200, mimetype="application/json"
-        )
-    return jsonify({"error": "Person not found"}), 404
+@app.route("/api/staff", methods=["GET"])
+def get_all_staff():
+    """API endpoint to get a list of all staff, with optional role filtering."""
+    role_filters = request.args.getlist("role")
+    staff = staff_manager.get_all_staff(roles=role_filters if role_filters else None)
+    return jsonify(staff)
 
 
-@app.route("/api/people/<int:person_id>", methods=["PUT"])
-def update_person(person_id):
-    """API endpoint to update a person's details."""
+@app.route("/api/people/<int:person_id>/assignments", methods=["PUT"])
+def update_assignments(person_id):
+    """API endpoint to update all staff assignments for a person."""
     data = request.json
-    person_to_update = Person(**data)
-    person_to_update.id = person_id
-    success = person_manager.update_person(person_to_update)
+    success = person_manager.update_staff_assignments(
+        person_id=person_id,
+        clinician_id=data.get("clinician_id"),
+        cm_id=data.get("case_manager_id"),
+        cm_2nd_id=data.get("case_manager_2nd_id"),
+        assoc_id=data.get("associate_id"),
+        assoc_2nd_id=data.get("associate_2nd_id"),
+    )
     if success:
-        return jsonify({"message": "Person updated successfully"}), 200
-    return jsonify({"error": "Failed to update person"}), 500
+        return jsonify({"message": "Assignments updated successfully"}), 200
+    return jsonify({"error": "Failed to update assignments"}), 500
 
 
-@app.route("/api/people/assign", methods=["POST"])
-def assign_person():
-    """API endpoint to assign a new person to an empty room."""
+@app.route("/api/people/<int:person_id>/update-field", methods=["PATCH"])
+def update_person_field(person_id):
+    """API endpoint to update a single field for a person."""
     data = request.json
-    room_name = data.get("room")
-    person_details = data.get("person")
-    if not room_name or not person_details:
-        return jsonify({"error": "Missing room or person details"}), 400
-    new_person = Person(**person_details)
-    success = person_manager.assign_person_to_room(new_person, room_name)
+    field_name = data.get("field_name")
+    new_value = data.get("new_value")
+    if not field_name or new_value is None:
+        return jsonify({"error": "Missing field_name or new_value"}), 400
+    success = person_manager.update_field(person_id, field_name, new_value)
     if success:
-        return jsonify({"message": f"Assigned {new_person.name} to {room_name}"}), 201
-    return jsonify({"error": "Failed to assign person"}), 500
+        return jsonify({"message": f"Field {field_name} updated successfully"}), 200
+    return jsonify({"error": f"Failed to update field {field_name}"}), 500
 
-
-@app.route("/api/people/remove/<int:person_id>", methods=["DELETE"])
-def remove_person(person_id):
-    """API endpoint to remove a person's details from a room."""
-    success = person_manager.remove_person(person_id)
-    if success:
-        return jsonify({"message": "Person removed successfully"}), 200
-    return jsonify({"error": "Failed to remove person"}), 500
-
+@app.route('/main-editor')
+def main_editor():
+    """Renders the main editor page."""
+    return render_template('main-editor.html')
 
 # --- RUN THE APP ---
 if __name__ == "__main__":

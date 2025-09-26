@@ -20,6 +20,8 @@ class PersonData:
         "bloods": "Bloods",
         "flight_risk": "FlightRisk",
         "no_uds": "NoUDS",
+        "uds_frequency": "UDSFrequency",
+        "mdt_day": "MDTDay",
         # You can add more fields here in the future (e.g., "MDTDay", "SpecialNotes")
     }
 
@@ -28,10 +30,14 @@ class PersonData:
         self._people_cache = {}
 
     def _load_person_from_row(self, row: dict) -> Person | None:
-        """Maps a database row (from the People table/view) to a Person object."""
+        """
+        Maps a database row from the vw_WhiteboardData view to the complete Person object.
+        This is the single source of truth for creating person objects.
+        """
         if not row:
             return None
 
+        # This now maps ALL the fields from the definitive database view
         return Person(
             id=row.get("ID"),
             room=row.get("Room"),
@@ -53,11 +59,22 @@ class PersonData:
             progress_percent=row.get("Progress%", 0.0),
             special_notes=row.get("SpecialNotes"),
             is_special_patient=bool(row.get("IsSpecialPatient", False)),
+            # Staff Assignment IDs
             clinician_id=row.get("ClinicianID"),
             case_manager_id=row.get("CaseManagerID"),
             case_manager_2nd_id=row.get("CaseManager2ndID"),
             associate_id=row.get("AssociateID"),
             associate_2nd_id=row.get("Associate2ndID"),
+            # Last Completed Dates
+            last_treatment_plan=row.get("LastTreatmentPlan"),
+            last_honos=row.get("LastHonos"),
+            last_uds=row.get("LastUDS"),
+            no_uds=bool(row.get("NoUDS", False)),
+            # Joined User-Friendly Names
+            legal=row.get("Legal"),
+            clinician_name=row.get("ClinicianName"),
+            case_managers=row.get("CaseManagers"),
+            associates=row.get("Associates"),
         )
 
     # In person_data.py, replace the get_sorted_people method
