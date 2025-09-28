@@ -22,6 +22,9 @@ class PersonData:
         "no_uds": "NoUDS",
         "uds_frequency": "UDSFrequency",
         "mdt_day": "MDTDay",
+        "last_treatment_plan": "LastTreatmentPlan",
+        "last_honos": "LastHonos",
+        "last_uds": "LastUDS",
         # You can add more fields here in the future (e.g., "MDTDay", "SpecialNotes")
     }
 
@@ -118,8 +121,37 @@ class PersonData:
         return results_list
 
     def get_person_by_id(self, person_id: int) -> Person | None:
-        """Retrieves a single person from the in-memory cache by their ID."""
-        return self._people_cache.get(person_id)
+        """
+        Retrieves a single person from the database by their ID.
+        This is a more robust method that doesn't rely on the cache.
+        """
+        # First, check the cache for speed
+        if person_id in self._people_cache:
+            return self._people_cache.get(person_id)
+
+        # If not in cache, fetch directly from the database
+        conn = get_db_connection()
+        if not conn:
+            return None
+
+        person = None
+        try:
+            # Use our main view to get all the rich data for the person
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM vw_WhiteboardData WHERE ID = %s", (person_id,))
+            row = cursor.fetchone()
+            if row:
+                person = self._load_person_from_row(row)
+                # Store it in the cache for next time
+                self._people_cache[person_id] = person
+        except Exception as e:
+            print(f"An error occurred in get_person_by_id: {e}")
+        finally:
+            if conn and conn.is_connected():
+                cursor.close()
+                conn.close()
+        
+        return person
 
     def get_person_by_room(self, room_name: str) -> Person | None:
         """Finds a room's basic details (ID, NHI) from the base People table."""
@@ -471,12 +503,12 @@ class PersonData:
         try:
             new_due_date = completed_date + relativedelta(months=3)
             sql = "UPDATE People SET TreatmentPlans = %s, LastTreatmentPlan = %s WHERE ID = %s"
-            values = (new_due_date, completed_date, person_id)
+            
+            # THE FIX: Convert date objects to YYYY-MM-DD strings before sending to the DB
+            values = (new_due_date.strftime('%Y-%m-%d'), completed_date.strftime('%Y-%m-%d'), person_id)
 
-            # Update the database
             self._execute_transactional_update(sql, values)
 
-            # Update the cache
             if person_id in self._people_cache:
                 self._people_cache[person_id].treatment_plans_due = new_due_date
                 self._people_cache[person_id].last_treatment_plan = completed_date
@@ -492,7 +524,9 @@ class PersonData:
         try:
             new_due_date = completed_date + relativedelta(months=3)
             sql = "UPDATE People SET HoNos = %s, LastHonos = %s WHERE ID = %s"
-            values = (new_due_date, completed_date, person_id)
+
+            # THE FIX: Convert date objects to YYYY-MM-DD strings
+            values = (new_due_date.strftime('%Y-%m-%d'), completed_date.strftime('%Y-%m-%d'), person_id)
 
             self._execute_transactional_update(sql, values)
 
@@ -514,10 +548,7 @@ class PersonData:
             return False
 
         try:
-            # Replicate the logic from your VBA Select Case
-            frequency = (
-                person.uds_frequency.upper() if person.uds_frequency else "WEEKLY"
-            )
+            frequency = (person.uds_frequency.upper() if person.uds_frequency else "WEEKLY")
             if frequency == "BI-WEEKLY":
                 new_due_date = last_test_date + timedelta(days=14)
             elif frequency == "WEEKLY":
@@ -526,11 +557,15 @@ class PersonData:
                 new_due_date = last_test_date + relativedelta(months=1)
             elif frequency == "RANDOM":
                 new_due_date = date.today() + timedelta(days=random.randint(7, 28))
-            else:  # ONREQUEST or other
+            elif frequency == "ONREQUEST":
+                new_due_date = date.today()
+            else:
                 new_due_date = last_test_date
 
             sql = "UPDATE People SET UDSDue = %s, LastUDS = %s WHERE ID = %s"
-            values = (new_due_date, last_test_date, person_id)
+
+            # THE FIX: Convert date objects to YYYY-MM-DD strings
+            values = (new_due_date.strftime('%Y-%m-%d'), last_test_date.strftime('%Y-%m-%d'), person_id)
 
             self._execute_transactional_update(sql, values)
 
@@ -552,11 +587,20 @@ class PersonData:
         try:
             cursor = conn.cursor()
             conn.start_transaction()
+
+            # Step 1: Verify the record exists BEFORE trying to update it.
+            # The person's ID is always the last parameter in our 'values' tuple.
+            person_id_to_check = values[-1]
+            cursor.execute("SELECT ID FROM People WHERE ID = %s", (person_id_to_check,))
+            
+            # If fetchone() returns None, the record truly doesn't exist.
+            if cursor.fetchone() is None:
+                raise Exception(f"Update failed because no record was found for ID: {person_id_to_check}")
+
+            # Step 2: Now that we know the record exists, perform the update.
+            # We no longer need to check cursor.rowcount here, because 0 is a valid result.
             cursor.execute(sql, values)
-            if cursor.rowcount == 0:
-                raise Exception(
-                    f"Update failed because no record was found for the given ID."
-                )
+            
             conn.commit()
         except Exception as e:
             conn.rollback()
