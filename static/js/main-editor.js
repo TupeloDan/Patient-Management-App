@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const datePicker = flatpickr("#modal-date-input", { dateFormat: "d/m/Y" });
     const staffResponsibleChoice = new Choices('#staff-responsible-select', { removeItemButton: true, searchResultLimit: 10 });
     const staffMseChoice = new Choices('#staff-mse-select', { removeItemButton: true, searchResultLimit: 10 });
+    const shiftLeadChoice = new Choices('#shift-lead-select', { removeItemButton: true, searchResultLimit: 10 });
 
     // --- API Endpoints & Config ---
     const PATIENTS_API = '/api/people';
@@ -187,10 +188,26 @@ document.addEventListener('DOMContentLoaded', () => {
             staffMseChoice.setChoices(staffChoices, 'value', 'label', true);
         } catch (error) { console.error("Could not load staff for leave modal:", error); }
         
-        escortedChecklistContainer.innerHTML = `<p>Escorted Checklist will be built here.</p>`;
-        unescortedChecklistContainer.innerHTML = `<p>Unescorted Checklist will be built here.</p>`;
+        try {
+            const escortedTextResponse = await fetch(`${UI_TEXT_API}?context=Escorted`);
+            const escortedText = await escortedTextResponse.json();
+            const unescortedTextResponse = await fetch(`${UI_TEXT_API}?context=Unescorted`);
+            const unescortedText = await unescortedTextResponse.json();
+            escortedChecklistContainer.innerHTML = buildChecklistHtml(escortedText, 'escorted');
+            unescortedChecklistContainer.innerHTML = buildChecklistHtml(unescortedText, 'unescorted');
+        } catch (error) { console.error("Could not load UI text for checklists:", error); }
         toggleChecklists();
         addLeaveModal.classList.remove('hidden');
+    }
+
+    function buildChecklistHtml(textData, context) {
+        return `
+            <div class="form-group"><label>Mental State Exam:</label><p class="checklist-desc">${textData.lblMSE || ''}</p><div><label><input type="radio" name="${context}_mse" value="rn" checked> ${textData.optMSE_RN || 'Completed by RN'}</label></div><div><label><input type="radio" name="${context}_mse" value="other"> ${textData.optMSE_Other || 'Completed by HCA'}</label></div></div>
+            <div class="form-group"><label>Risk Assessment:</label><p class="checklist-desc">${textData.lblRisk || ''}</p><div><label><input type="radio" name="${context}_risk" value="rn" checked> ${textData.optRiskAssessmentRN || 'Completed by RN'}</label></div><div><label><input type="radio" name="${context}_risk" value="other"> ${textData.optRiskAssessment_Other || 'Completed by HCA'}</label></div></div>
+            <div class="form-group"><label>Awareness of Leave Conditions:</label><p class="checklist-desc">${textData.lblLeaveCondition || ''}</p><div><label><input type="checkbox" name="${context}_leave_con"> ${textData.chkLeaveCon || 'I am aware'}</label></div></div>
+            <div class="form-group"><label>Awareness of AWOL Procedure:</label><p class="checklist-desc">${textData.lblAWOL || ''}</p><div><label><input type="checkbox" name="${context}_awol"> ${textData.chkAwol || 'I am aware'}</label></div></div>
+            <div class="form-group"><label>Ability to Contact Ward:</label><p class="checklist-desc">${textData.lbContactWard || ''}</p><div><label><input type="radio" name="${context}_phone" value="ward1" checked> ${textData.optWardOne || 'Ward Phone 1'}</label></div><div><label><input type="radio" name="${context}_phone" value="ward2"> ${textData.optWardTwo || 'Ward Phone 2'}</label></div><div><label><input type="radio" name="${context}_phone" value="own"> ${textData.optOwnPhone || 'Own Phone'}</label></div></div>
+        `;
     }
 
     function toggleChecklists() {
@@ -226,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await refreshAllData(patientId);
         } catch (error) {
             console.error('Error updating date:', error);
-            alert('Could not update the date. Please check the terminal for more details.');
+            alert('Could not update the date.');
         }
     });
 

@@ -13,13 +13,11 @@
     <header class="header-container">
         <h1>Main Bed Board Editor</h1>
     </header>
-
     <div class="main-editor-layout">
         <div class="patient-list-column">
             <h2>Occupied Rooms</h2>
             <div id="patient-list-container"></div>
         </div>
-
         <div id="details-pane" class="details-pane-column hidden">
             <div class="details-header-container">
                 <h2 id="details-header">Select a patient...</h2>
@@ -51,53 +49,27 @@
                 <button id="view-checklist-btn">View Report</button>
             </div>
         </div>
-
         <div id="date-picker-modal" class="modal-backdrop hidden">
-            <div class="modal-content">
-                <h3 id="modal-title">Change Date</h3>
-                <div class="date-input-group">
-                    <input type="text" id="modal-date-input" placeholder="dd/mm/yyyy">
-                    <button id="modal-today-btn">Today</button>
-                </div>
-                <div class="modal-actions">
-                    <button id="modal-cancel-btn">Cancel</button>
-                    <button id="modal-save-btn">Save</button>
-                </div>
-            </div>
+            <div class="modal-content"><h3 id="modal-title">Change Date</h3><div class="date-input-group"><input type="text" id="modal-date-input" placeholder="dd/mm/yyyy"><button id="modal-today-btn">Today</button></div><div class="modal-actions"><button id="modal-cancel-btn">Cancel</button><button id="modal-save-btn">Save</button></div></div>
         </div>
-
         <div id="add-leave-modal" class="modal-backdrop hidden">
             <div class="modal-content-large">
                 <h3 id="add-leave-title">New Leave Checklist for [Patient Name]</h3>
                 <div id="initial-leave-details" class="form-grid">
-                    <div class="form-group">
-                        <label>Leave Type:</label>
-                        <div><input type="radio" id="leave-type-escorted" name="leave-type" value="Escorted" checked> Escorted <input type="radio" id="leave-type-unescorted" name="leave-type" value="Unescorted"> Unescorted</div>
-                    </div>
-                     <div class="form-group">
-                        <label>Duration (Minutes):</label>
-                        <div>
-                            <input type="radio" name="duration" value="30" checked> 30
-                            <input type="radio" name="duration" value="40"> 40
-                            <input type="radio" name="duration" value="60"> 60
-                            <input type="radio" name="duration" value="other"> Other
-                        </div>
-                    </div>
+                    <div class="form-group"><label>Leave Type:</label><div><input type="radio" id="leave-type-escorted" name="leave-type" value="Escorted" checked> Escorted <input type="radio" id="leave-type-unescorted" name="leave-type" value="Unescorted"> Unescorted</div></div>
+                     <div class="form-group"><label>Duration (Minutes):</label><div><input type="radio" name="duration" value="30" checked> 30 <input type="radio" name="duration" value="40"> 40 <input type="radio" name="duration" value="60"> 60 <input type="radio" name="duration" value="other"> Other</div></div>
                     <div class="form-group"><label for="staff-responsible-select">Staff Responsible / Escort:</label><select id="staff-responsible-select"></select></div>
                     <div class="form-group"><label for="staff-mse-select">Staff Completing MSE:</label><select id="staff-mse-select"></select></div>
+                    <div class="form-group"><label for="shift-lead-select">Shift Lead Notified:</label><select id="shift-lead-select"></select></div>
                     <div class="form-group full-width"><label for="clothing-desc-input">Description of Clothing:</label><textarea id="clothing-desc-input" rows="2"></textarea></div>
                 </div>
                 <hr>
                 <div id="escorted-checklist-container" class="checklist-container"></div>
                 <div id="unescorted-checklist-container" class="checklist-container hidden"></div>
-                <div class="modal-actions">
-                    <button id="leave-modal-cancel-btn">Cancel</button>
-                    <button id="leave-modal-submit-btn">Submit</button>
-                </div>
+                <div class="modal-actions"><button id="leave-modal-cancel-btn">Cancel</button><button id="leave-modal-submit-btn">Submit</button></div>
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="{{ url_for('static', filename='js/main-editor.js') }}"></script>
