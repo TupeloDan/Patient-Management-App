@@ -76,19 +76,34 @@ class LeaveRecordData:
         try:
             cursor = conn.cursor()
             args = (
-                new_leave.nhi, new_leave.patient_name, new_leave.leave_date,
-                new_leave.leave_time, new_leave.expected_return_time, new_leave.leave_type,
-                new_leave.is_escorted_leave, new_leave.staff_responsible_id,
-                new_leave.leave_description, 0,
+                new_leave.nhi,
+                new_leave.patient_name,
+                new_leave.leave_date,
+                new_leave.leave_time,
+                new_leave.expected_return_time,
+                new_leave.leave_type,
+                new_leave.is_escorted_leave,
+                new_leave.staff_responsible_id,
+                new_leave.leave_description,
+                new_leave.mse,
+                new_leave.risk,
+                new_leave.leave_conditions_met,
+                new_leave.awol_status,
+                new_leave.has_ward_contact_info,
+                new_leave.senior_nurse_notified,
+                0,  # Placeholder for the OUT parameter p_new_id
             )
             result_args = cursor.callproc("sp_AddLeave", args)
-            new_id = result_args[9]
             conn.commit()
-            new_leave.id = new_id
+            
+            # THE FIX: The 16th item is at index 15.
+            new_leave.id = result_args[15]
+
             print(f"Successfully added new leave record for {new_leave.patient_name}")
             return True
         except Exception as e:
             print(f"Error adding leave record: {e}")
+            conn.rollback()
             return False
         finally:
             if conn and conn.is_connected():

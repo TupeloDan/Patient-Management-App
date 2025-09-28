@@ -43,7 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const leaveTypeUnescortedRadio = document.getElementById('leave-type-unescorted');
     const escortedChecklistContainer = document.getElementById('escorted-checklist-container');
     const unescortedChecklistContainer = document.getElementById('unescorted-checklist-container');
-    
+    const clothingDescInput = document.getElementById('clothing-desc-input');
+
     const taskToggles = {
         'rel_security': document.getElementById('rel-security-toggle'), 'profile': document.getElementById('profile-toggle'),
         'metobolic': document.getElementById('metobolic-toggle'), 'bloods': document.getElementById('bloods-toggle'),
@@ -64,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderPatientList() {
+        if (!patientListContainer) return;
         const currentScroll = patientListContainer.scrollTop;
         patientListContainer.innerHTML = '';
         allPatients.forEach(person => {
@@ -96,10 +98,13 @@ document.addEventListener('DOMContentLoaded', () => {
         udsFrequencySelect.innerHTML = UDS_OPTIONS.map(o => `<option value="${o}" ${selectedPatient.uds_frequency === o ? 'selected' : ''}>${o}</option>`).join('');
         mdtDaySelect.innerHTML = MDT_DAYS.map(d => `<option value="${d}" ${selectedPatient.mdt_day === d ? 'selected' : ''}>${d}</option>`).join('');
         for (const taskName in taskToggles) {
-            const btn = taskToggles[taskName], isDone = selectedPatient[taskName];
-            btn.textContent = isDone ? 'Done' : 'Not Done';
-            btn.className = 'task-toggle-btn';
-            btn.classList.add(isDone ? 'done' : 'not-done');
+            const btn = taskToggles[taskName];
+            if(btn) {
+                const isDone = selectedPatient[taskName];
+                btn.textContent = isDone ? 'Done' : 'Not Done';
+                btn.className = 'task-toggle-btn';
+                btn.classList.add(isDone ? 'done' : 'not-done');
+            }
         }
     }
 
@@ -256,6 +261,39 @@ document.addEventListener('DOMContentLoaded', () => {
     leaveTypeEscortedRadio.addEventListener('change', toggleChecklists);
     leaveTypeUnescortedRadio.addEventListener('change', toggleChecklists);
     
+    leaveModalSubmitBtn.addEventListener('click', async () => {
+        if (!selectedPatient) return;
+        const leaveType = document.querySelector('input[name="leave-type"]:checked').value;
+        const context = leaveType.toLowerCase();
+        const duration = document.querySelector('input[name="duration"]:checked').value;
+        const checklistContainer = document.getElementById(`${context}-checklist-container`);
+        const leaveData = {
+            nhi: selectedPatient.nhi, patient_name: selectedPatient.name,
+            leave_type: leaveType, is_escorted_leave: leaveType === 'Escorted',
+            duration_minutes: duration,
+            staff_responsible_id: staffResponsibleChoice.getValue(true),
+            staff_mse_id: staffMseChoice.getValue(true),
+            shift_lead_id: shiftLeadChoice.getValue(true),
+            leave_description: clothingDescInput.value,
+            mse_completed: checklistContainer.querySelector(`input[name="${context}_mse"]:checked`)?.value === 'rn',
+            risk_assessment_completed: checklistContainer.querySelector(`input[name="${context}_risk"]:checked`)?.value === 'rn',
+            leave_conditions_met: checklistContainer.querySelector(`input[name="${context}_leave_con"]`)?.checked || false,
+            awol_aware: checklistContainer.querySelector(`input[name="${context}_awol"]`)?.checked || false,
+            contact_aware: checklistContainer.querySelector(`input[name="${context}_phone"]:checked`)?.value !== 'ward1' && checklistContainer.querySelector(`input[name="${context}_phone"]:checked`)?.value !== 'ward2',
+            senior_notified: true,
+        };
+        try {
+            const response = await fetch(LEAVES_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(leaveData) });
+            if (!response.ok) throw new Error((await response.json()).error || 'Failed to save');
+            alert('Leave saved successfully!');
+            addLeaveModal.classList.add('hidden');
+            await refreshAllData(selectedPatient.id);
+        } catch (error) {
+            console.error('Error saving leave:', error);
+            alert(`Could not save leave: ${error.message}`);
+        }
+    });
+
     for (const taskName in taskToggles) {
         taskToggles[taskName].addEventListener('click', async () => {
             if (!selectedPatient) return;
