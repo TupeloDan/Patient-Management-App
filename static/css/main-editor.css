@@ -4,89 +4,71 @@
     padding: 10px;
     gap: 20px;
 }
-
 .patient-list-column {
-    flex: 1; /* Takes up 1 part of the space */
+    flex: 1;
     background-color: #f9f9f9;
     padding: 15px;
     border-radius: 8px;
-    height: calc(100vh - 120px); /* Adjust height as needed */
+    height: calc(100vh - 120px);
     overflow-y: auto;
 }
-
 .details-pane-column {
-    flex: 3; /* Takes up 3 parts of the space, making it wider */
+    flex: 3;
     background-color: #f9f9f9;
     padding: 15px;
     border-radius: 8px;
 }
-
 .patient-list-item {
     padding: 10px;
     border-bottom: 1px solid #ddd;
     cursor: pointer;
     border-radius: 4px;
 }
-
 .patient-list-item:hover {
     background-color: #e9e9e9;
 }
-
 .patient-list-item.selected {
     background-color: #007bff;
     color: white;
     font-weight: bold;
 }
-
 .details-header-container {
     display: flex;
     align-items: center;
     gap: 15px;
     margin-bottom: 20px;
 }
-/* Add this to your main style.css file */
-.hidden {
-    display: none !important; /* Use !important to ensure it always overrides other display styles */
-}
-
-/* ... rest of your style.css rules ... */
-/* Hide the special patient label by default */
 #special-patient-label {
     display: none;
 }
-
-/* When the details pane has the 'is-special' class, show the label and make it red */
 .details-pane-column.is-special #special-patient-label {
     display: inline-block;
-    background-color: #dc3545; /* Red color */
+    background-color: #dc3545;
     color: white;
     padding: 4px 10px;
     border-radius: 12px;
     font-size: 0.9em;
     font-weight: bold;
 }
-
-
+.hidden {
+    display: none !important;
+}
 hr {
     border: none;
     border-top: 1px solid #ddd;
     margin: 20px 0;
 }
-
 .tasks-due-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 15px;
 }
-
 .task-item label {
     font-weight: bold;
     display: block;
     margin-bottom: 4px;
 }
-
-.task-item span,
-.task-item select {
+.task-item span, .task-item select {
     display: block;
     margin-bottom: 8px;
     padding: 6px;
@@ -95,19 +77,16 @@ hr {
     width: 100%;
     border: 1px solid #ced4da;
 }
-
 .tasks-to-complete-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 15px;
 }
-
 .task-toggle-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
-
 .task-toggle-btn {
     padding: 6px 12px;
     border: 1px solid #ccc;
@@ -115,47 +94,15 @@ hr {
     cursor: pointer;
     font-weight: bold;
 }
-
 .task-toggle-btn.done {
     background-color: #28a745;
     color: white;
     border-color: #28a745;
 }
-
 .task-toggle-btn.not-done {
     background-color: #dc3545;
     color: white;
     border-color: #dc3545;
-}
-/* Modal Styles */
-.modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-.modal-content {
-    background-color: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-.modal-actions {
-    margin-top: 15px;
-    text-align: right;
-}
-.date-input-group {
-    display: flex;
-    gap: 10px;
-}
-
-.date-input-group input {
-    flex-grow: 1; /* Allows the input to take up the available space */
 }
 .leaves-section {
     display: flex;
@@ -175,11 +122,76 @@ hr {
 .leave-item {
     padding: 4px;
     border-bottom: 1px solid #ccc;
-}
-.leaves-actions {
-    margin-top: 15px;
+    font-size: 0.9em;
+    cursor: pointer;
 }
 .leave-item.selected {
     background-color: #007bff;
     color: white;
+}
+.leaves-actions {
+    margin-top: 15px;
+}
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+.modal-actions {
+    margin-top: 15px;
+    text-align: right;
+}
+.date-input-group {
+    display: flex;
+    gap: 10px;
+}
+.date-input-group input {
+    flex-grow: 1;
+}
+.modal-content-large {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    width: 80%;
+    max-width: 900px;
+}
+#initial-leave-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: center;
+}
+.form-group {
+    margin-bottom: 10px;
+}
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+.form-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.form-group select, .form-group textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+.checklist-container {
+    margin-top: 15px;
 }

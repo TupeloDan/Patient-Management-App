@@ -147,6 +147,36 @@ def get_ui_text():
     text_elements = ui_text_manager.get_ui_text_by_context(context)
     return jsonify(text_elements)
 
+@app.route("/api/leaves", methods=["POST"])
+def add_leave():
+    """API endpoint to create a new leave record from the checklist."""
+    data = request.json
+    if not data:
+        return jsonify({"error": "Invalid data provided"}), 400
+
+    # The frontend will send a complete object. We create a LeaveRecord from it.
+    # Note: The 'leave_record_model.py' file must exist for this to work.
+    try:
+        new_leave = LeaveRecord(
+            nhi=data.get('nhi'),
+            patient_name=data.get('patient_name'),
+            leave_date=datetime.strptime(data.get('leave_date'), "%d/%m/%Y").date(),
+            leave_time=datetime.now(), # Or get from form if needed
+            expected_return_time=datetime.now() + timedelta(minutes=int(data.get('duration_minutes', 0))),
+            leave_type=data.get('leave_type'),
+            leave_description=data.get('leave_description'),
+            is_escorted_leave=data.get('is_escorted_leave')
+            # We'll map the other checklist fields here as we build the JS
+        )
+        success = leave_manager.add_leave(new_leave)
+        if success:
+            return jsonify({"message": "Leave created successfully", "new_leave_id": new_leave.id}), 201
+        else:
+            raise Exception("Failed to save to database.")
+    except Exception as e:
+        print(f"Error creating leave record: {e}")
+        return jsonify({"error": "Failed to create leave record."}), 500
+
 # --- RUN THE APP ---
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

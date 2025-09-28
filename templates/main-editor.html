@@ -1,17 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Main Bed Board Editor</title>
-
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main-editor.css') }}">
 </head>
-
 <body>
     <header class="header-container">
         <h1>Main Bed Board Editor</h1>
@@ -20,89 +17,39 @@
     <div class="main-editor-layout">
         <div class="patient-list-column">
             <h2>Occupied Rooms</h2>
-            <div id="patient-list-container">
-            </div>
+            <div id="patient-list-container"></div>
         </div>
 
         <div id="details-pane" class="details-pane-column hidden">
-
             <div class="details-header-container">
-                <h2 id="details-header">Select a patient to begin...</h2>
+                <h2 id="details-header">Select a patient...</h2>
                 <span id="special-patient-label" class="status-label">Special Patient</span>
             </div>
-
             <div class="tasks-due-grid">
-                <div class="task-item">
-                    <label>Treatment Plan Last Updated:</label>
-                    <span id="last-plan-date" class="editable-date">--</span>
-                    <label>Due:</label>
-                    <span id="plan-due-date">--</span>
-                </div>
-                <div class="task-item">
-                    <label>HoNos Last Updated:</label>
-                    <span id="last-honos-date" class="editable-date">--</span>
-                    <label>Due:</label>
-                    <span id="honos-due-date">--</span>
-                </div>
-                <div class="task-item">
-                    <label>UDS Last Updated:</label>
-                    <span id="last-uds-date" class="editable-date">--</span>
-                    <label>Due:</label>
-                    <span id="uds-due-date">--</span>
-                </div>
-                <div class="task-item">
-                    <label for="uds-frequency-select">UDS Frequency:</label>
-                    <select id="uds-frequency-select"></select>
-                </div>
-                <div class="task-item">
-                    <label for="mdt-day-select">MDT Day:</label>
-                    <select id="mdt-day-select"></select>
-                </div>
+                <div class="task-item"><label>Treatment Plan Last Updated:</label><span id="last-plan-date" class="editable-date">--</span><label>Due:</label><span id="plan-due-date">--</span></div>
+                <div class="task-item"><label>HoNos Last Updated:</label><span id="last-honos-date" class="editable-date">--</span><label>Due:</label><span id="honos-due-date">--</span></div>
+                <div class="task-item"><label>UDS Last Updated:</label><span id="last-uds-date" class="editable-date">--</span><label>Due:</label><span id="uds-due-date">--</span></div>
+                <div class="task-item"><label for="uds-frequency-select">UDS Frequency:</label><select id="uds-frequency-select"></select></div>
+                <div class="task-item"><label for="mdt-day-select">MDT Day:</label><select id="mdt-day-select"></select></div>
             </div>
-
             <hr>
-
             <div class="tasks-to-complete-grid">
-                <div class="task-toggle-item">
-                    <span>Relational Security:</span>
-                    <button id="rel-security-toggle" class="task-toggle-btn">Not Done</button>
-                </div>
-                <div class="task-toggle-item">
-                    <span>Patient Profile:</span>
-                    <button id="profile-toggle" class="task-toggle-btn">Not Done</button>
-                </div>
-                <div class="task-toggle-item">
-                    <span>Metabolics:</span>
-                    <button id="metobolic-toggle" class="task-toggle-btn">Not Done</button>
-                </div>
-                <div class="task-toggle-item">
-                    <span>Bloods:</span>
-                    <button id="bloods-toggle" class="task-toggle-btn">Not Done</button>
-                </div>
-                <div class="task-toggle-item">
-                    <span>Flight Risk:</span>
-                    <button id="flight-risk-toggle" class="task-toggle-btn">Not Done</button>
-                </div>
+                <div class="task-toggle-item"><span>Relational Security:</span><button id="rel-security-toggle" class="task-toggle-btn"></button></div>
+                <div class="task-toggle-item"><span>Patient Profile:</span><button id="profile-toggle" class="task-toggle-btn"></button></div>
+                <div class="task-toggle-item"><span>Metabolics:</span><button id="metobolic-toggle" class="task-toggle-btn"></button></div>
+                <div class="task-toggle-item"><span>Bloods:</span><button id="bloods-toggle" class="task-toggle-btn"></button></div>
+                <div class="task-toggle-item"><span>Flight Risk:</span><button id="flight-risk-toggle" class="task-toggle-btn"></button></div>
             </div>
-
             <hr>
-
             <div class="leaves-section">
-                <div class="leaves-list-container">
-                    <h3>Leaves Today</h3>
-                    <div id="leaves-today-list" class="leaves-list"></div>
-                </div>
-                <div class="leaves-list-container">
-                    <h3>All Other Leaves</h3>
-                    <div id="all-leaves-list" class="leaves-list"></div>
-                </div>
+                <div class="leaves-list-container"><h3>Leaves Today</h3><div id="leaves-today-list" class="leaves-list"></div></div>
+                <div class="leaves-list-container"><h3>All Other Leaves</h3><div id="all-leaves-list" class="leaves-list"></div></div>
             </div>
             <div class="leaves-actions">
                 <button id="add-leave-btn">Add Leave</button>
                 <button id="return-leave-btn">Return</button>
-                <button id="view-checklist-btn">View Checklist</button>
+                <button id="view-checklist-btn">View Report</button>
             </div>
-
         </div>
 
         <div id="date-picker-modal" class="modal-backdrop hidden">
@@ -119,10 +66,40 @@
             </div>
         </div>
 
+        <div id="add-leave-modal" class="modal-backdrop hidden">
+            <div class="modal-content-large">
+                <h3 id="add-leave-title">New Leave Checklist for [Patient Name]</h3>
+                <div id="initial-leave-details" class="form-grid">
+                    <div class="form-group">
+                        <label>Leave Type:</label>
+                        <div><input type="radio" id="leave-type-escorted" name="leave-type" value="Escorted" checked> Escorted <input type="radio" id="leave-type-unescorted" name="leave-type" value="Unescorted"> Unescorted</div>
+                    </div>
+                     <div class="form-group">
+                        <label>Duration (Minutes):</label>
+                        <div>
+                            <input type="radio" name="duration" value="30" checked> 30
+                            <input type="radio" name="duration" value="40"> 40
+                            <input type="radio" name="duration" value="60"> 60
+                            <input type="radio" name="duration" value="other"> Other
+                        </div>
+                    </div>
+                    <div class="form-group"><label for="staff-responsible-select">Staff Responsible / Escort:</label><select id="staff-responsible-select"></select></div>
+                    <div class="form-group"><label for="staff-mse-select">Staff Completing MSE:</label><select id="staff-mse-select"></select></div>
+                    <div class="form-group full-width"><label for="clothing-desc-input">Description of Clothing:</label><textarea id="clothing-desc-input" rows="2"></textarea></div>
+                </div>
+                <hr>
+                <div id="escorted-checklist-container" class="checklist-container"></div>
+                <div id="unescorted-checklist-container" class="checklist-container hidden"></div>
+                <div class="modal-actions">
+                    <button id="leave-modal-cancel-btn">Cancel</button>
+                    <button id="leave-modal-submit-btn">Submit</button>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="{{ url_for('static', filename='js/main-editor.js') }}"></script>
 </body>
-
 </html>

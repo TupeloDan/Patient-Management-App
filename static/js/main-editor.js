@@ -1,11 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Initialize the date picker ---
-    const datePicker = flatpickr("#modal-date-input", {
-        dateFormat: "d/m/Y", // Sets the DD/MM/YYYY format
-    });
+    // --- Initializations ---
+    const datePicker = flatpickr("#modal-date-input", { dateFormat: "d/m/Y" });
+    const staffResponsibleChoice = new Choices('#staff-responsible-select', { removeItemButton: true, searchResultLimit: 10 });
+    const staffMseChoice = new Choices('#staff-mse-select', { removeItemButton: true, searchResultLimit: 10 });
 
     // --- API Endpoints & Config ---
     const PATIENTS_API = '/api/people';
+    const STAFF_API = '/api/staff';
+    const UI_TEXT_API = '/api/ui-text';
+    const LEAVES_API = '/api/leaves';
     const UDS_OPTIONS = ['Weekly', 'Bi-Weekly', 'Monthly', 'Random', 'OnRequest'];
     const MDT_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -30,34 +33,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalTodayBtn = document.getElementById('modal-today-btn');
     const leavesTodayList = document.getElementById('leaves-today-list');
     const allLeavesList = document.getElementById('all-leaves-list');
-
+    const addLeaveBtn = document.getElementById('add-leave-btn');
+    const addLeaveModal = document.getElementById('add-leave-modal');
+    const addLeaveTitle = document.getElementById('add-leave-title');
+    const leaveModalCancelBtn = document.getElementById('leave-modal-cancel-btn');
+    const leaveModalSubmitBtn = document.getElementById('leave-modal-submit-btn');
+    const leaveTypeEscortedRadio = document.getElementById('leave-type-escorted');
+    const leaveTypeUnescortedRadio = document.getElementById('leave-type-unescorted');
+    const escortedChecklistContainer = document.getElementById('escorted-checklist-container');
+    const unescortedChecklistContainer = document.getElementById('unescorted-checklist-container');
+    
     const taskToggles = {
         'rel_security': document.getElementById('rel-security-toggle'), 'profile': document.getElementById('profile-toggle'),
         'metobolic': document.getElementById('metobolic-toggle'), 'bloods': document.getElementById('bloods-toggle'),
         'flight_risk': document.getElementById('flight-risk-toggle'),
     };
 
-    let allPatients = [], selectedPatient = null, currentDateField = null;
+    let allPatients = [], selectedPatient = null, selectedLeave = null, currentDateField = null;
 
-    /**
-     * Fetches all data, re-renders the patient list, and re-selects the current patient.
-     */
     async function refreshAllData(selectedIdToPreserve) {
         try {
             const response = await fetch(PATIENTS_API);
             allPatients = await response.json();
             renderPatientList();
             if (selectedIdToPreserve) {
-                handlePatientSelection(selectedIdToPreserve, false); // false to prevent loop
+                handlePatientSelection(selectedIdToPreserve);
             }
-        } catch (error) {
-            console.error("Error refreshing data:", error);
-        }
+        } catch (error) { console.error("Error refreshing data:", error); }
     }
 
-    /**
-     * Renders the clickable patient list on the left.
-     */
     function renderPatientList() {
         const currentScroll = patientListContainer.scrollTop;
         patientListContainer.innerHTML = '';
@@ -67,16 +71,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.className = 'patient-list-item';
                 item.dataset.patientId = person.id;
                 item.innerHTML = `<strong>${person.name}</strong><br><small>${person.nhi} - Room: ${person.room}</small>`;
-                item.addEventListener('click', () => handlePatientSelection(person.id, true)); // true to fetch leaves
+                item.addEventListener('click', () => handlePatientSelection(person.id));
                 patientListContainer.appendChild(item);
             }
         });
         patientListContainer.scrollTop = currentScroll;
     }
     
-    /**
-     * Populates the details pane with the selected patient's task data.
-     */
     function populateDetailsPane() {
         if (!selectedPatient) return;
         const formatDate = (dateString) => {
@@ -101,13 +102,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Fetches and displays leave records for the selected patient.
-     */
     async function populateLeaveLists() {
         if (!selectedPatient) return;
         leavesTodayList.innerHTML = '';
         allLeavesList.innerHTML = '';
+        selectedLeave = null;
         try {
             const response = await fetch(`/api/people/${selectedPatient.id}/leaves`);
             if (!response.ok) throw new Error('Failed to fetch leave data');
@@ -120,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
             leaves.forEach(leave => {
                 const item = document.createElement('div');
                 item.className = 'leave-item';
+                item.addEventListener('click', () => handleLeaveSelection(leave, item));
                 const leaveDate = new Date(leave.LeaveDate).toLocaleDateString('en-NZ');
                 const leaveTime = leave.LeaveTime ? new Date(leave.LeaveTime).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }) : '';
                 const returnTime = leave.ReturnTime ? new Date(leave.ReturnTime).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
@@ -130,9 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { console.error('Error populating leave lists:', error); }
     }
 
-    /**
-     * Sends a request to update a single field in the database.
-     */
     async function updateField(fieldName, newValue) {
         if (!selectedPatient) return;
         try {
@@ -145,10 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Handles the logic for when a patient is selected from the list.
-     */
-    function handlePatientSelection(patientId, shouldFetchLeaves = true) {
+    function handlePatientSelection(patientId) {
         selectedPatient = allPatients.find(p => p.id === patientId);
         if (!selectedPatient) {
             detailsPane.classList.add('hidden');
@@ -161,12 +155,16 @@ document.addEventListener('DOMContentLoaded', () => {
         detailsHeader.textContent = `Currently Managing: ${selectedPatient.name}`;
         detailsPane.classList.toggle('is-special', selectedPatient.is_special_patient);
         populateDetailsPane();
-        if (shouldFetchLeaves) {
-            populateLeaveLists();
-        }
+        populateLeaveLists();
+    }
+    
+    function handleLeaveSelection(leaveObject, leaveElement) {
+        selectedLeave = leaveObject;
+        console.log("Selected Leave:", selectedLeave);
+        document.querySelectorAll('.leave-item').forEach(item => item.classList.remove('selected'));
+        leaveElement.classList.add('selected');
     }
 
-    // --- MODAL & EVENT LISTENERS ---
     function openDatePicker(field, title) {
         currentDateField = field;
         modalTitle.textContent = title;
@@ -175,16 +173,45 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.remove('hidden');
     }
 
+    async function openAddLeaveModal() {
+        if (!selectedPatient) {
+            alert("Please select a patient first.");
+            return;
+        }
+        addLeaveTitle.textContent = `New Leave Checklist for ${selectedPatient.name}`;
+        try {
+            const staffResponse = await fetch(STAFF_API);
+            const allStaff = await staffResponse.json();
+            const staffChoices = allStaff.map(s => ({ value: s.ID, label: `${s.StaffName} (${s.Role})` }));
+            staffResponsibleChoice.setChoices(staffChoices, 'value', 'label', true);
+            staffMseChoice.setChoices(staffChoices, 'value', 'label', true);
+        } catch (error) { console.error("Could not load staff for leave modal:", error); }
+        
+        escortedChecklistContainer.innerHTML = `<p>Escorted Checklist will be built here.</p>`;
+        unescortedChecklistContainer.innerHTML = `<p>Unescorted Checklist will be built here.</p>`;
+        toggleChecklists();
+        addLeaveModal.classList.remove('hidden');
+    }
+
+    function toggleChecklists() {
+        if (leaveTypeEscortedRadio.checked) {
+            escortedChecklistContainer.classList.remove('hidden');
+            unescortedChecklistContainer.classList.add('hidden');
+        } else {
+            escortedChecklistContainer.classList.add('hidden');
+            unescortedChecklistContainer.classList.remove('hidden');
+        }
+    }
+
+    // --- EVENT LISTENERS ---
     modalCancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
     modalTodayBtn.addEventListener('click', () => datePicker.setDate(new Date(), true));
-
     modalSaveBtn.addEventListener('click', async () => {
         const selectedDate = datePicker.selectedDates[0];
         if (!selectedDate || !currentDateField || !selectedPatient) return;
         const newDate = flatpickr.formatDate(selectedDate, "d/m/Y"); 
         let endpoint = '', body = {};
         const patientId = selectedPatient.id;
-
         if (currentDateField === 'plan') {
             endpoint = `/api/people/${patientId}/update-plan-date`; body = { completed_date: newDate };
         } else if (currentDateField === 'honos') {
@@ -207,6 +234,11 @@ document.addEventListener('DOMContentLoaded', () => {
     lastHonosDate.addEventListener('click', () => openDatePicker('honos', 'Change Last HoNos Date'));
     lastUdsDate.addEventListener('click', () => openDatePicker('uds', 'Change Last UDS Date'));
 
+    addLeaveBtn.addEventListener('click', openAddLeaveModal);
+    leaveModalCancelBtn.addEventListener('click', () => addLeaveModal.classList.add('hidden'));
+    leaveTypeEscortedRadio.addEventListener('change', toggleChecklists);
+    leaveTypeUnescortedRadio.addEventListener('change', toggleChecklists);
+    
     for (const taskName in taskToggles) {
         taskToggles[taskName].addEventListener('click', async () => {
             if (!selectedPatient) return;
