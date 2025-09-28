@@ -1,9 +1,6 @@
 // static/js/api.js
-
-const API_BASE = ''; // We can use relative paths
-
 async function fetchData(url) {
-    const response = await fetch(`${API_BASE}${url}`);
+    const response = await fetch(url);
     if (!response.ok) {
         throw new Error(`Network response was not ok for ${url}`);
     }
@@ -11,7 +8,7 @@ async function fetchData(url) {
 }
 
 async function updateData(url, method, body) {
-    const response = await fetch(`${API_BASE}${url}`, {
+    const response = await fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -38,4 +35,8 @@ export const staffApi = {
 
 export const uiTextApi = {
     getContext: (context) => fetchData(`/api/ui-text?context=${context}`)
+};
+
+export const leavesApi = {
+    add: (leaveData) => updateData('/api/leaves', 'POST', leaveData)
 };
