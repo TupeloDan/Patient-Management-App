@@ -70,6 +70,11 @@ def get_all_staff():
     role_filters = request.args.getlist('role')
     staff = staff_manager.get_all_staff(roles=role_filters if role_filters else None)
     return jsonify(staff)
+# --- NEW: Endpoint to get delegated staff ---
+@app.route("/api/delegated-staff", methods=["GET"])
+def get_delegated_staff():
+    staff = staff_manager.get_delegated_staff()
+    return jsonify(staff)
 @app.route("/api/people/<int:person_id>/leaves", methods=["GET"])
 def get_person_leaves(person_id):
     person_manager.get_sorted_people(include_empty_rooms=True)
@@ -131,6 +136,15 @@ def add_leave():
     data = request.json
     if not data:
         return jsonify({"error": "Invalid data provided"}), 400
+
+    # --- REFINED: Add robust server-side validation ---
+    required_fields = ['nhi', 'patient_name', 'leave_type', 'duration_minutes', 'staff_responsible_id', 'senior_nurse_id', 'leave_description']
+    missing_fields = [field for field in required_fields if not data.get(field)]
+    if missing_fields:
+        return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
+    if not str(data.get('leave_description')).strip():
+         return jsonify({"error": "Description of clothing cannot be empty."}), 400
+
     try:
         leave_date = date.today()
         leave_time = datetime.now()
@@ -146,12 +160,12 @@ def add_leave():
             leave_description=data.get('leave_description'),
             is_escorted_leave=data.get('is_escorted_leave'),
             staff_responsible_id=data.get('staff_responsible_id'),
+            senior_nurse_id=data.get('senior_nurse_id'), # MODIFIED
             mse=data.get('mse_completed'),
             risk=data.get('risk_assessment_completed'),
             leave_conditions_met=data.get('leave_conditions_met'),
             awol_status=data.get('awol_aware'),
-            has_ward_contact_info=data.get('contact_aware'),
-            senior_nurse_notified=data.get('senior_notified')
+            has_ward_contact_info=data.get('contact_aware')
         )
         success = leave_manager.add_leave(new_leave)
         if success:

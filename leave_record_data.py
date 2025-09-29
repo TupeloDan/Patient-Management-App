@@ -75,6 +75,7 @@ class LeaveRecordData:
         if not conn: return False
         try:
             cursor = conn.cursor()
+            # --- REFINED: Arguments now match the updated stored procedure ---
             args = (
                 new_leave.nhi,
                 new_leave.patient_name,
@@ -90,13 +91,13 @@ class LeaveRecordData:
                 new_leave.leave_conditions_met,
                 new_leave.awol_status,
                 new_leave.has_ward_contact_info,
-                new_leave.senior_nurse_notified,
+                new_leave.senior_nurse_id, # MODIFIED: Passing the ID
                 0,  # Placeholder for the OUT parameter p_new_id
             )
             result_args = cursor.callproc("sp_AddLeave", args)
             conn.commit()
             
-            # THE FIX: The 16th item is at index 15.
+            # The new ID is the 16th element (index 15)
             new_leave.id = result_args[15]
 
             print(f"Successfully added new leave record for {new_leave.patient_name}")

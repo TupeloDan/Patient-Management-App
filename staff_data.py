@@ -41,3 +41,32 @@ class StaffData:
                 conn.close()
         
         return staff_list
+    
+    def get_delegated_staff(self) -> list[dict]:
+        """
+        Fetches a list of staff members who are marked as delegated.
+        """
+        conn = get_db_connection()
+        if not conn:
+            return []
+        
+        delegated_list = []
+        try:
+            # Joins DelegatedStaff with Staff to get names and IDs
+            sql = """
+                SELECT s.ID, s.StaffName 
+                FROM DelegatedStaff ds
+                JOIN Staff s ON ds.StaffID = s.ID
+                ORDER BY s.StaffName;
+            """
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(sql)
+            delegated_list = cursor.fetchall()
+        except Exception as e:
+            print(f"Database error in get_delegated_staff: {e}")
+        finally:
+            if conn and conn.is_connected():
+                cursor.close()
+                conn.close()
+        
+        return delegated_list

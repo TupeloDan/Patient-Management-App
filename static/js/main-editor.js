@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- API Endpoints & Config ---
     const PATIENTS_API = '/api/people';
     const STAFF_API = '/api/staff';
+    const DELEGATED_STAFF_API = '/api/delegated-staff'; // NEW
     const UI_TEXT_API = '/api/ui-text';
     const LEAVES_API = '/api/leaves';
     const UDS_OPTIONS = ['Weekly', 'Bi-Weekly', 'Monthly', 'Random', 'OnRequest'];
@@ -186,11 +187,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         addLeaveTitle.textContent = `New Leave Checklist for ${selectedPatient.name}`;
         try {
-            const staffResponse = await fetch(STAFF_API);
-            const allStaff = await staffResponse.json();
+            // --- REFINED: Fetch all three staff lists in parallel ---
+            const [allStaff, delegatedStaff] = await Promise.all([
+                fetch(STAFF_API).then(res => res.json()),
+                fetch(DELEGATED_STAFF_API).then(res => res.json())
+            ]);
+            
             const staffChoices = allStaff.map(s => ({ value: s.ID, label: `${s.StaffName} (${s.Role})` }));
+            const delegatedChoices = delegatedStaff.map(s => ({ value: s.ID, label: s.StaffName }));
+
             staffResponsibleChoice.setChoices(staffChoices, 'value', 'label', true);
             staffMseChoice.setChoices(staffChoices, 'value', 'label', true);
+            shiftLeadChoice.setChoices(delegatedChoices, 'value', 'label', true);
+
         } catch (error) { console.error("Could not load staff for leave modal:", error); }
         
         try {
@@ -224,6 +233,31 @@ document.addEventListener('DOMContentLoaded', () => {
             unescortedChecklistContainer.classList.remove('hidden');
         }
     }
+    
+    // --- REFINED: Added a validation function for clarity ---
+    function validateLeaveForm() {
+        const staffResp = staffResponsibleChoice.getValue(true);
+        const shiftLead = shiftLeadChoice.getValue(true);
+        const clothingDesc = clothingDescInput.value.trim();
+        
+        const errors = [];
+        if (!staffResp) {
+            errors.push("Staff Responsible must be selected.");
+        }
+        if (!shiftLead) {
+            errors.push("Shift Lead Notified must be selected.");
+        }
+        if (clothingDesc.length === 0) {
+            errors.push("Description of Clothing cannot be empty.");
+        }
+
+        if (errors.length > 0) {
+            alert("Please fix the following issues:\n\n- " + errors.join("\n- "));
+            return false;
+        }
+        return true;
+    }
+
 
     // --- EVENT LISTENERS ---
     modalCancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
@@ -261,36 +295,60 @@ document.addEventListener('DOMContentLoaded', () => {
     leaveTypeEscortedRadio.addEventListener('change', toggleChecklists);
     leaveTypeUnescortedRadio.addEventListener('change', toggleChecklists);
     
+    // --- REFINED: The entire submit button logic is updated ---
     leaveModalSubmitBtn.addEventListener('click', async () => {
-        if (!selectedPatient) return;
+        if (!selectedPatient || !validateLeaveForm()) {
+            return;
+        }
+
+        // --- REFINED: Disable button to prevent double-clicks ---
+        leaveModalSubmitBtn.disabled = true;
+        leaveModalSubmitBtn.textContent = 'Submitting...';
+
         const leaveType = document.querySelector('input[name="leave-type"]:checked').value;
         const context = leaveType.toLowerCase();
         const duration = document.querySelector('input[name="duration"]:checked').value;
         const checklistContainer = document.getElementById(`${context}-checklist-container`);
+        
         const leaveData = {
-            nhi: selectedPatient.nhi, patient_name: selectedPatient.name,
-            leave_type: leaveType, is_escorted_leave: leaveType === 'Escorted',
+            nhi: selectedPatient.nhi,
+            patient_name: selectedPatient.name,
+            leave_type: leaveType,
+            is_escorted_leave: leaveType === 'Escorted',
             duration_minutes: duration,
             staff_responsible_id: staffResponsibleChoice.getValue(true),
-            staff_mse_id: staffMseChoice.getValue(true),
-            shift_lead_id: shiftLeadChoice.getValue(true),
-            leave_description: clothingDescInput.value,
+            senior_nurse_id: shiftLeadChoice.getValue(true), // MODIFIED
+            leave_description: clothingDescInput.value.trim(),
+            // --- The rest of the checklist data ---
             mse_completed: checklistContainer.querySelector(`input[name="${context}_mse"]:checked`)?.value === 'rn',
             risk_assessment_completed: checklistContainer.querySelector(`input[name="${context}_risk"]:checked`)?.value === 'rn',
             leave_conditions_met: checklistContainer.querySelector(`input[name="${context}_leave_con"]`)?.checked || false,
             awol_aware: checklistContainer.querySelector(`input[name="${context}_awol"]`)?.checked || false,
             contact_aware: checklistContainer.querySelector(`input[name="${context}_phone"]:checked`)?.value !== 'ward1' && checklistContainer.querySelector(`input[name="${context}_phone"]:checked`)?.value !== 'ward2',
-            senior_notified: true,
         };
+
         try {
-            const response = await fetch(LEAVES_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(leaveData) });
-            if (!response.ok) throw new Error((await response.json()).error || 'Failed to save');
+            const response = await fetch(LEAVES_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(leaveData)
+            });
+            if (!response.ok) {
+                // Try to get a specific error message from the backend
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to save leave record.');
+            }
             alert('Leave saved successfully!');
             addLeaveModal.classList.add('hidden');
             await refreshAllData(selectedPatient.id);
         } catch (error) {
             console.error('Error saving leave:', error);
+            // --- REFINED: Show the specific error from the backend ---
             alert(`Could not save leave: ${error.message}`);
+        } finally {
+            // --- REFINED: Re-enable the button regardless of success or failure ---
+            leaveModalSubmitBtn.disabled = false;
+            leaveModalSubmitBtn.textContent = 'Submit';
         }
     });
 

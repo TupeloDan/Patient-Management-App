@@ -7,24 +7,10 @@
             },
             "ssh": "Disabled",
             "previewLimit": 50,
-            "server": "192.168.68.100",
-            "port": 3306,
-            "driver": "MySQL",
-            "name": "Main Server MYSQL",
-            "database": "PeopleAndLeaveDB",
-            "username": "root"
-        },
-        {
-            "mysqlOptions": {
-                "authProtocol": "default",
-                "enableSsl": "Disabled"
-            },
-            "ssh": "Disabled",
-            "previewLimit": 50,
             "server": "localhost",
             "port": 3306,
             "driver": "MySQL",
-            "name": "LOCAL Server",
+            "name": "Local Server",
             "database": "PeopleAndLeaveDB",
             "username": "root"
         }
