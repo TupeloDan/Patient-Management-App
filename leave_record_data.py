@@ -69,13 +69,16 @@ class LeaveRecordData:
                 conn.close()
         return on_leave_list
 
+    # leave_record_data.py
+# ... (other methods remain the same) ...
+
     def add_leave(self, new_leave: LeaveRecord) -> bool:
         """Adds a new leave record to the database."""
         conn = get_db_connection()
         if not conn: return False
         try:
             cursor = conn.cursor()
-            # --- REFINED: Arguments now match the updated stored procedure ---
+            # --- REFINED: Arguments now match the final stored procedure ---
             args = (
                 new_leave.nhi,
                 new_leave.patient_name,
@@ -85,20 +88,22 @@ class LeaveRecordData:
                 new_leave.leave_type,
                 new_leave.is_escorted_leave,
                 new_leave.staff_responsible_id,
+                new_leave.staff_nurse_id, # MODIFIED: Pass the staff nurse ID
                 new_leave.leave_description,
                 new_leave.mse,
                 new_leave.risk,
                 new_leave.leave_conditions_met,
                 new_leave.awol_status,
                 new_leave.has_ward_contact_info,
-                new_leave.senior_nurse_id, # MODIFIED: Passing the ID
+                new_leave.senior_nurse_id,
+                new_leave.contact_phone_number,
                 0,  # Placeholder for the OUT parameter p_new_id
             )
             result_args = cursor.callproc("sp_AddLeave", args)
             conn.commit()
             
-            # The new ID is the 16th element (index 15)
-            new_leave.id = result_args[15]
+            # The new ID is now the 18th element (index 17)
+            new_leave.id = result_args[17]
 
             print(f"Successfully added new leave record for {new_leave.patient_name}")
             return True
@@ -110,6 +115,8 @@ class LeaveRecordData:
             if conn and conn.is_connected():
                 cursor.close()
                 conn.close()
+
+# ... (rest of the file is the same) ...
 
     def log_return(self, record_id: int, return_time: datetime, signed_in_by_id: int) -> bool:
         """Logs the return of a patient from leave."""

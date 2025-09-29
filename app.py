@@ -131,19 +131,30 @@ def get_ui_text():
     text_elements = ui_text_manager.get_ui_text_by_context(context)
     return jsonify(text_elements)
 
+# app.py
+# ... (other routes remain the same) ...
+
 @app.route("/api/leaves", methods=["POST"])
 def add_leave():
     data = request.json
     if not data:
         return jsonify({"error": "Invalid data provided"}), 400
 
-    # --- REFINED: Add robust server-side validation ---
-    required_fields = ['nhi', 'patient_name', 'leave_type', 'duration_minutes', 'staff_responsible_id', 'senior_nurse_id', 'leave_description']
+    # --- REFINED: Add robust server-side validation for all fields ---
+    required_fields = [
+        'nhi', 'patient_name', 'leave_type', 'duration_minutes', 
+        'staff_responsible_id', 'staff_mse_id', 'senior_nurse_id', 'leave_description'
+    ]
     missing_fields = [field for field in required_fields if not data.get(field)]
     if missing_fields:
         return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
     if not str(data.get('leave_description')).strip():
          return jsonify({"error": "Description of clothing cannot be empty."}), 400
+
+    is_own_phone = data.get('is_own_phone', False)
+    contact_phone_number = data.get('contact_phone_number')
+    if is_own_phone and not contact_phone_number:
+        return jsonify({"error": "A phone number is required when 'Own Phone' is selected."}), 400
 
     try:
         leave_date = date.today()
@@ -156,11 +167,13 @@ def add_leave():
             leave_date=leave_date,
             leave_time=leave_time,
             expected_return_time=expected_return,
-            leave_type=data.get('leave_type'),
+            leave_type=data.get('leave_type'), # This now receives EGA, UCL, etc.
             leave_description=data.get('leave_description'),
             is_escorted_leave=data.get('is_escorted_leave'),
             staff_responsible_id=data.get('staff_responsible_id'),
-            senior_nurse_id=data.get('senior_nurse_id'), # MODIFIED
+            staff_nurse_id=data.get('staff_mse_id'), # MODIFIED
+            senior_nurse_id=data.get('senior_nurse_id'),
+            contact_phone_number=contact_phone_number if is_own_phone else None,
             mse=data.get('mse_completed'),
             risk=data.get('risk_assessment_completed'),
             leave_conditions_met=data.get('leave_conditions_met'),
@@ -175,6 +188,7 @@ def add_leave():
     except Exception as e:
         print(f"Error creating leave record: {e}")
         return jsonify({"error": "Failed to create leave record."}), 500
+
 
 # --- RUN THE APP ---
 if __name__ == '__main__':
