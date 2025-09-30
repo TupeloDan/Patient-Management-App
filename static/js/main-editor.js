@@ -227,7 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function buildChecklistHtml(textData, context) {
-        // --- MODIFIED: Phone options are now conditional based on the context ---
         let phoneOptions;
         if (context === 'unescorted') {
             phoneOptions = [
@@ -255,7 +254,14 @@ document.addEventListener('DOMContentLoaded', () => {
             <label style="margin-right: 15px;"><input type="radio" name="${context}_leave_type" value="${opt.id}" ${index === 0 ? 'checked' : ''}> ${opt.label}</label>
         `).join('');
 
+        // --- NEW: Conditionally create the warning message HTML ---
+        let specialPatientWarningHtml = '';
+        if (context === 'escorted' && selectedPatient && selectedPatient.is_special_patient) {
+            specialPatientWarningHtml = `<p style="color: red; font-weight: bold; margin-top: 10px;">${textData.lblStatusMsg || ''}</p>`;
+        }
+
         return `
+            ${specialPatientWarningHtml}
             <div class="form-group"><label>Select Leave Type:</label><div>${leaveTypeRadiosHtml}</div></div><hr>
             <div class="form-group"><label>Mental State Exam:</label><p class="checklist-desc">${textData.lblMSE || ''}</p><div><label><input type="radio" name="${context}_mse" value="rn" checked> ${textData.optMSE_RN || 'Completed by RN'}</label></div><div><label><input type="radio" name="${context}_mse" value="other"> ${textData.optMSE_Other || 'Completed by HCA'}</label></div></div>
             <div class="form-group"><label>Risk Assessment:</label><p class="checklist-desc">${textData.lblRisk || ''}</p><div><label><input type="radio" name="${context}_risk" value="rn" checked> ${textData.optRiskAssessmentRN || 'Completed by RN'}</label></div><div><label><input type="radio" name="${context}_risk" value="other"> ${textData.optRiskAssessment_Other || 'Completed by HCA'}</label></div></div>
@@ -389,13 +395,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const ownPhoneNumber = document.getElementById(`${context}-phone-number-input`).value.trim();
         const leaveType = addLeaveModal.querySelector(`input[name="${context}_leave_type"]:checked`).value;
         
-        // --- MODIFIED: Logic to get the correct contact phone number ---
         let contactPhoneNumber = null;
         if (phoneSelection === 'own') {
             contactPhoneNumber = ownPhoneNumber;
         } else if (phoneSelection === 'knows_contact') {
             contactPhoneNumber = '0';
-        } else { // It's a ward phone
+        } else {
             const labelText = phoneRadio.closest('label').textContent;
             const match = labelText.match(/(\d{3}[\s-]?\d{3}[\s-]?\d{3,4}|\d{10,11})/);
             if (match) {
