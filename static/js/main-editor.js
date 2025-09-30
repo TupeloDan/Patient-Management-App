@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const escortedChecklistContainer = document.getElementById('escorted-checklist-container');
     const unescortedChecklistContainer = document.getElementById('unescorted-checklist-container');
     const leaveModalSubmitBtn = document.getElementById('leave-modal-submit-btn');
-    const clothingDescInput = document.getElementById('clothing-desc-input');
     const lastPlanDate = document.getElementById('last-plan-date');
     const planDueDate = document.getElementById('plan-due-date');
     const lastHonosDate = document.getElementById('last-honos-date');
@@ -49,7 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const returnModalCancelBtn = document.getElementById('return-modal-cancel-btn');
     const returnModalConfirmBtn = document.getElementById('return-modal-confirm-btn');
     const returnLeaveTitle = document.getElementById('return-leave-title');
-
+    const clothingDescInput = document.getElementById('clothing-desc-input');
+    const clothingDescLabel = document.getElementById('clothing-desc-label'); // NEW
     const taskToggles = {
         'rel_security': document.getElementById('rel-security-toggle'), 'profile': document.getElementById('profile-toggle'),
         'metobolic': document.getElementById('metobolic-toggle'), 'bloods': document.getElementById('bloods-toggle'),
@@ -520,6 +520,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const patientId = selectedPatient.id;
         await updateField('mdt_day', event.target.value);
         await refreshAllData(patientId);
+    });
+    clothingDescLabel.addEventListener('click', async () => {
+        if (!selectedPatient) return;
+
+        try {
+            const response = await fetch(`/api/people/${selectedPatient.id}/last-leave-description`);
+            if (!response.ok) {
+                throw new Error("Could not fetch last description.");
+            }
+            const data = await response.json();
+            if (data.last_description) {
+                clothingDescInput.value = data.last_description;
+            } else {
+                alert("No previous clothing description found for this patient.");
+            }
+        } catch (error) {
+            console.error("Error fetching last description:", error);
+            alert(error.message);
+        }
     });
 
     // --- INITIALIZE ---

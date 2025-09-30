@@ -166,8 +166,13 @@ hr {
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    width: 80%;
-    max-width: 900px;
+    /* MODIFIED: Use viewport width for better scaling */
+    width: 80vw; 
+    /* MODIFIED: Set a max-width for very large screens */
+    max-width: 950px; 
+    /* NEW: Add a max-height and scroll for smaller screens */
+    max-height: 90vh;
+    overflow-y: auto;
 }
 #initial-leave-details {
     display: grid;

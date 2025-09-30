@@ -260,10 +260,34 @@ def log_leave_return(leave_id):
         create_leave_report(leave_record, person, staff_details, return_details)
 
         return jsonify({"message": "Patient return logged and report updated."}), 200
+    
         
     except Exception as e:
         print(f"Error logging patient return: {e}")
         return jsonify({"error": "Failed to log patient return."}), 500
+ 
+
+
+@app.route("/api/people/<int:person_id>/last-leave-description", methods=["GET"])
+def get_last_leave_description(person_id):
+    person = person_manager.get_person_by_id(person_id)
+    if not person or not person.nhi:
+        return jsonify({"error": "Person not found"}), 404
+    
+    # Get all leaves and find the most recent one with a description
+    leave_records = leave_manager.get_leave_for_person(person.nhi)
+    last_description = ""
+    if leave_records:
+        # Sort by ID descending to get the most recent leave first
+        sorted_leaves = sorted(leave_records, key=lambda x: x['ID'], reverse=True)
+        for leave in sorted_leaves:
+            if leave.get('LeaveDescription'):
+                last_description = leave['LeaveDescription']
+                break # Stop once we find the first one
+
+    return jsonify({"last_description": last_description})
+
+
 
 # --- RUN THE APP ---
 if __name__ == '__main__':
