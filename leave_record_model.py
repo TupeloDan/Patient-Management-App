@@ -13,6 +13,7 @@ class LeaveRecord:
     return_time: datetime | None = None
     expected_return_time: datetime | None = None
     leave_type: str | None = None
+    duration_minutes: int | None = None
     mse: str | None = None
     risk: str | None = None
     leave_conditions_met: bool = False

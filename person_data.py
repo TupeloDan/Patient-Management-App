@@ -25,6 +25,7 @@ class PersonData:
         "last_treatment_plan": "LastTreatmentPlan",
         "last_honos": "LastHonos",
         "last_uds": "LastUDS",
+         "leave_return": "LeaveReturn",
         # You can add more fields here in the future (e.g., "MDTDay", "SpecialNotes")
     }
 

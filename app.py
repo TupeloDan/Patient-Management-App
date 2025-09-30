@@ -1,4 +1,4 @@
-# app.py
+# tupelodan/patient-management-app/Patient-Management-App-11280d08229d043412bbfeabe6ca9e8da6cbe246/app.py
 import json
 import os
 from flask import Flask, jsonify, request, render_template, send_from_directory
@@ -7,27 +7,26 @@ from datetime import date, datetime, timedelta
 
 # --- Import our data managers ---
 from person_data import PersonData
-from person_model import Person
 from leave_record_data import LeaveRecordData
-from leave_record_model import LeaveRecord
 from notice_data import NoticeData
 from staff_data import StaffData
 from ui_text_data import UiTextData
 from report_generator import create_leave_report
+from leave_record_model import LeaveRecord
 
 # --- Helper function for JSON serialization ---
 def json_serial(obj):
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
-    if isinstance(obj, LeaveRecord):
+    if hasattr(obj, '__dict__'):
         return obj.__dict__
-    raise TypeError (f"Type {type(obj)} not serializable")
+    raise TypeError(f"Type {type(obj)} not serializable")
 
 # --- Flask App Initialization ---
 app = Flask(__name__, template_folder="templates")
 CORS(app)
 
-# --- Define the absolute path to your reports directory ---
+# --- Define Constants ---
 REPORTS_DIRECTORY = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'reports')
 
 # --- Initialize our data managers ---
@@ -38,7 +37,7 @@ staff_manager = StaffData()
 ui_text_manager = UiTextData()
 
 # ===================================================================
-# --- RENDER ROUTES ---
+# --- RENDER & FILE SERVING ROUTES ---
 # ===================================================================
 @app.route('/')
 def index():
@@ -52,12 +51,8 @@ def editor():
 def main_editor():
     return render_template('main-editor.html')
 
-# ===================================================================
-# --- FILE SERVING ROUTE ---
-# ===================================================================
 @app.route('/reports/<path:filename>')
 def serve_report(filename):
-    """Securely serves a file from the reports directory."""
     return send_from_directory(REPORTS_DIRECTORY, filename)
 
 # ===================================================================
@@ -66,8 +61,7 @@ def serve_report(filename):
 @app.route('/data')
 def get_whiteboard_data():
     people_list = person_manager.get_sorted_people(include_empty_rooms=True)
-    people_json = json.dumps([p.__dict__ for p in people_list], default=json_serial)
-    return app.response_class(response=people_json, status=200, mimetype='application/json')
+    return json.dumps([p.__dict__ for p in people_list], default=json_serial)
 
 @app.route('/api/notices')
 def get_active_notices():
@@ -82,8 +76,7 @@ def get_on_leave_data():
 @app.route("/api/people", methods=["GET"])
 def get_people():
     people_list = person_manager.get_sorted_people(include_empty_rooms=True)
-    people_json = json.dumps([p.__dict__ for p in people_list], default=json_serial)
-    return app.response_class(response=people_json, status=200, mimetype='application/json')
+    return jsonify([p.__dict__ for p in people_list])
 
 @app.route("/api/staff", methods=["GET"])
 def get_all_staff():
@@ -98,13 +91,10 @@ def get_delegated_staff():
 
 @app.route("/api/people/<int:person_id>/leaves", methods=["GET"])
 def get_person_leaves(person_id):
-    person_manager.get_sorted_people(include_empty_rooms=True)
-    # This logic seems a bit complex to get the person; simplifying
     person = person_manager.get_person_by_id(person_id)
     if not person or not person.nhi:
         return jsonify({"error": "Person not found or has no NHI"}), 404
     leave_records = leave_manager.get_leave_for_person(person.nhi)
-    # The leave records from the SP are already dicts, no need to re-serialize
     return jsonify(leave_records)
 
 @app.route("/api/people/<int:person_id>/assignments", methods=["PUT"])
@@ -162,54 +152,38 @@ def get_ui_text():
 @app.route("/api/leaves", methods=["POST"])
 def add_leave():
     data = request.json
-    if not data:
-        return jsonify({"error": "Invalid data provided"}), 400
+    if not data: return jsonify({"error": "Invalid data provided"}), 400
 
-    # Server-side validation
-    required_fields = [
-        'nhi', 'patient_name', 'leave_type', 'duration_minutes', 
-        'staff_responsible_id', 'staff_mse_id', 'senior_nurse_id', 'leave_description'
-    ]
+    required_fields = ['nhi', 'patient_name', 'leave_type', 'duration_minutes', 'staff_responsible_id', 'staff_mse_id', 'senior_nurse_id', 'leave_description']
     missing_fields = [field for field in required_fields if not data.get(field)]
     if missing_fields:
         return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
     
     try:
+        duration = int(data.get('duration_minutes', 0))
         leave_date = date.today()
         leave_time = datetime.now()
-        duration = int(data.get('duration_minutes', 0))
         expected_return = leave_time + timedelta(minutes=duration)
         
         new_leave = LeaveRecord(
-            nhi=data.get('nhi'),
-            patient_name=data.get('patient_name'),
-            leave_date=leave_date,
-            leave_time=leave_time,
-            expected_return_time=expected_return,
-            leave_type=data.get('leave_type'),
-            leave_description=data.get('leave_description'),
-            is_escorted_leave=data.get('is_escorted_leave'),
-            staff_responsible_id=data.get('staff_responsible_id'),
-            staff_nurse_id=data.get('staff_mse_id'),
-            senior_nurse_id=data.get('senior_nurse_id'),
-            contact_phone_number=data.get('contact_phone_number'),
-            mse=data.get('mse_completed'),
-            risk=data.get('risk_assessment_completed'),
-            leave_conditions_met=data.get('leave_conditions_met'),
-            awol_status=data.get('awol_aware'),
+            nhi=data.get('nhi'), patient_name=data.get('patient_name'), leave_date=leave_date,
+            leave_time=leave_time, expected_return_time=expected_return, leave_type=data.get('leave_type'),
+            duration_minutes=duration, leave_description=data.get('leave_description'), is_escorted_leave=data.get('is_escorted_leave'),
+            staff_responsible_id=data.get('staff_responsible_id'), staff_nurse_id=data.get('staff_mse_id'),
+            senior_nurse_id=data.get('senior_nurse_id'), contact_phone_number=data.get('contact_phone_number'),
+            mse=data.get('mse_completed'), risk=data.get('risk_assessment_completed'),
+            leave_conditions_met=data.get('leave_conditions_met'), awol_status=data.get('awol_aware'),
             has_ward_contact_info=data.get('contact_aware')
         )
         
-        # 1. Add the leave to the database
         success = leave_manager.add_leave(new_leave)
         if not success:
             raise Exception("Failed to save the initial leave record to the database.")
 
-        # 2. Gather data for the report
-        # We need the full person object to check for `is_special_patient`
         person = person_manager.get_person_by_nhi(data.get('nhi'))
         if person:
             person_manager.update_field(person.id, 'leave_return', new_leave.expected_return_time)
+        
         all_staff_list = staff_manager.get_all_staff()
         staff_map = {staff['ID']: f"{staff['StaffName']} ({staff['Role']})" for staff in all_staff_list}
         
@@ -219,40 +193,28 @@ def add_leave():
             'senior_nurse_name': staff_map.get(new_leave.senior_nurse_id)
         }
 
-        # 3. Generate the PDF report
-        report_filename = create_leave_report(new_leave, person, staff_details)
-
-        # 4. Save the report's filename back to the database
-        if report_filename:
-            leave_manager.update_leave_filename(new_leave.id, report_filename)
+        filename_only = create_leave_report(new_leave, person, staff_details)
+        if filename_only:
+            leave_manager.update_leave_filename(new_leave.id, filename_only)
         
         return jsonify({"message": "Leave created and report generated successfully"}), 201
 
     except Exception as e:
         print(f"Error in the leave creation process: {e}")
         return jsonify({"error": "Failed to create leave record or report."}), 500
-    
-    # app.py
-# ... (at the end of the API ROUTES section)
+
 @app.route('/api/leaves/<int:leave_id>/return', methods=['POST'])
 def log_leave_return(leave_id):
-    """Logs a patient's return from leave."""
     data = request.json
     signed_in_by_id = data.get('signed_in_by_id')
-
-    if not signed_in_by_id:
-        return jsonify({"error": "Missing signed_in_by_id"}), 400
-
+    if not signed_in_by_id: return jsonify({"error": "Missing signed_in_by_id"}), 400
     try:
-        # 1. Log the return in the LeaveLog table
         return_time = datetime.now()
         success = leave_manager.log_return(leave_id, return_time, signed_in_by_id)
         if not success:
             raise Exception("Failed to update LeaveLog.")
-            
-        # 2. Get the person associated with the leave to clear their LeaveReturn status
-        # This requires a new method to get a leave record by its ID
-        leave_record = leave_manager.get_leave_by_id(leave_id) # We will create this method next
+        
+        leave_record = leave_manager.get_leave_by_id(leave_id)
         if not leave_record:
              return jsonify({"error": "Leave record not found."}), 404
 
@@ -260,11 +222,24 @@ def log_leave_return(leave_id):
         if not person:
             return jsonify({"error": "Associated person not found."}), 404
 
-        # 3. Clear the LeaveReturn field in the People table
         person_manager.update_field(person.id, 'leave_return', None)
 
-        return jsonify({"message": "Patient return logged successfully."}), 200
+        all_staff_list = staff_manager.get_all_staff()
+        staff_map = {staff['ID']: f"{staff['StaffName']} ({staff['Role']})" for staff in all_staff_list}
+        
+        staff_details = {
+            'responsible_name': staff_map.get(leave_record.staff_responsible_id),
+            'mse_staff_name': staff_map.get(leave_record.staff_nurse_id),
+            'senior_nurse_name': staff_map.get(leave_record.senior_nurse_id)
+        }
+        return_details = {
+            'return_time': return_time.strftime('%d-%m-%y %I:%M %p'),
+            'signed_in_by_name': staff_map.get(signed_in_by_id)
+        }
+        
+        create_leave_report(leave_record, person, staff_details, return_details)
 
+        return jsonify({"message": "Patient return logged and report updated."}), 200
     except Exception as e:
         print(f"Error logging patient return: {e}")
         return jsonify({"error": "Failed to log patient return."}), 500
