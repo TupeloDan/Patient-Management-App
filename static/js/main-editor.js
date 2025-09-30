@@ -136,16 +136,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const item = document.createElement('div');
                 item.className = 'leave-item';
                 item.addEventListener('click', () => handleLeaveSelection(leave, item));
+
+                // --- THIS IS THE FIX ---
                 const leaveDate = new Date(leave.LeaveDate).toLocaleDateString('en-NZ');
-                const leaveTime = leave.LeaveTime ? new Date(leave.LeaveTime).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }) : '';
-                const returnTime = leave.ReturnTime ? new Date(leave.ReturnTime).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+                const leaveTime = leave.LeaveTime_formatted; 
+                const leaveType = leave.LeaveType;
+                const duration = leave.DurationMinutes ? `${leave.DurationMinutes} mins` : '';
                 const status = leave.ReturnTime ? 'Returned' : 'Out';
-                item.textContent = `${leaveDate} | ${leaveTime} - ${returnTime} | ${leave.LeaveType} [${status}]`;
+
+                item.textContent = `${leaveDate}, ${leaveTime}, ${leaveType}, ${duration}, ${status}`;
+                // --- END FIX ---
+
                 item.classList.toggle('returned', !!leave.ReturnTime);
+
                 if (leaveDate === today) { leavesTodayList.appendChild(item); } 
                 else { allLeavesList.appendChild(item); }
             });
-        } catch (error) { console.error('Error populating leave lists:', error); }
+        } catch (error) { 
+            console.error('Error populating leave lists:', error); 
+        }
     }
 
     async function updateField(fieldName, newValue) {
@@ -201,14 +210,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function openAddLeaveModal() {
-        if (!selectedPatient) {
-            alert("Please select a patient first.");
-            return;
-        }
-        
         resetLeaveModalDefaults();
         addLeaveTitle.textContent = `New Leave Checklist for ${selectedPatient.name}`;
-
         try {
             const [allStaff, delegatedStaff, escortedText, unescortedText] = await Promise.all([
                 fetch(STAFF_API).then(res => res.json()),
@@ -216,98 +219,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetch(`${UI_TEXT_API}?context=Escorted`).then(res => res.json()),
                 fetch(`${UI_TEXT_API}?context=Unescorted`).then(res => res.json())
             ]);
-            
             staffResponsibleChoice.setChoices(allStaff.map(s => ({ value: s.ID, label: `${s.StaffName} (${s.Role})` })), 'value', 'label', true);
             staffMseChoice.setChoices(allStaff.map(s => ({ value: s.ID, label: `${s.StaffName} (${s.Role})` })), 'value', 'label', true);
             shiftLeadChoice.setChoices(delegatedStaff.map(s => ({ value: s.ID, label: s.StaffName })), 'value', 'label', true);
-
             escortedChecklistContainer.innerHTML = buildChecklistHtml(escortedText, 'escorted');
             unescortedChecklistContainer.innerHTML = buildChecklistHtml(unescortedText, 'unescorted');
-            
-            addLeaveModal.querySelectorAll('input[name*="_phone"]').forEach(radio => {
-                radio.addEventListener('change', handlePhoneSelectionChange);
-            });
-            addLeaveModal.querySelectorAll('input[name="duration"]').forEach(radio => {
-                radio.addEventListener('change', handleDurationChange);
-            });
-
+            addLeaveModal.querySelectorAll('input[name*="_phone"]').forEach(radio => radio.addEventListener('change', handlePhoneSelectionChange));
+            addLeaveModal.querySelectorAll('input[name="duration"]').forEach(radio => radio.addEventListener('change', handleDurationChange));
         } catch (error) { 
             console.error("Could not load all data for leave modal:", error); 
         }
-        
         handleDurationChange({ target: addLeaveModal.querySelector('input[name="duration"]:checked') });
         toggleChecklists();
         addLeaveModal.classList.remove('hidden');
     }
 
     function buildChecklistHtml(textData, context) {
-        let phoneOptions;
-        if (context === 'unescorted') {
-            phoneOptions = [
-                { id: 'knows_contact', label: 'Knows how to contact ward' },
-                { id: 'own', label: textData.optOwnPhone || 'Own Phone' }
-            ];
-        } else { // Escorted
-            phoneOptions = [
-                { id: 'ward1', label: textData.optWardOne || 'Ward Phone 1' },
-                { id: 'ward2', label: textData.optWardTwo || 'Ward Phone 2' },
-                { id: 'ward3', label: textData.optWardThree || 'Ward Phone 3' },
-                { id: 'own', label: textData.optOwnPhone || 'Own Phone' }
-            ];
-        }
-
-        const phoneRadiosHtml = phoneOptions.map((opt, index) => `
-            <div><label><input type="radio" name="${context}_phone" value="${opt.id}" ${index === 0 ? 'checked' : ''}> ${opt.label}</label></div>
-        `).join('');
-
+        let phoneOptions = context === 'unescorted'
+            ? [{ id: 'knows_contact', label: 'Knows how to contact ward' }, { id: 'own', label: textData.optOwnPhone || 'Own Phone' }]
+            : [{ id: 'ward1', label: textData.optWardOne || 'Ward Phone 1' }, { id: 'ward2', label: textData.optWardTwo || 'Ward Phone 2' }, { id: 'ward3', label: textData.optWardThree || 'Ward Phone 3' }, { id: 'own', label: textData.optOwnPhone || 'Own Phone' }];
+        
+        const phoneRadiosHtml = phoneOptions.map((opt, index) => `<div><label><input type="radio" name="${context}_phone" value="${opt.id}" ${index === 0 ? 'checked' : ''}> ${opt.label}</label></div>`).join('');
         const leaveTypeOptions = context === 'escorted'
             ? [{ id: 'EGA', label: 'Escorted Ground Access (EGA)' }, { id: 'ECL', label: 'Escorted Community Leave (ECL)' }]
             : [{ id: 'UGA', label: 'Unescorted Ground Access (UGA)' }, { id: 'UCL', label: 'Unescorted Community Leave (UCL)' }];
+        const leaveTypeRadiosHtml = leaveTypeOptions.map((opt, index) => `<label style="margin-right: 15px;"><input type="radio" name="${context}_leave_type" value="${opt.id}" ${index === 0 ? 'checked' : ''}> ${opt.label}</label>`).join('');
         
-        const leaveTypeRadiosHtml = leaveTypeOptions.map((opt, index) => `
-            <label style="margin-right: 15px;"><input type="radio" name="${context}_leave_type" value="${opt.id}" ${index === 0 ? 'checked' : ''}> ${opt.label}</label>
-        `).join('');
-
         let specialPatientWarningHtml = '';
         if (context === 'escorted' && selectedPatient && selectedPatient.is_special_patient) {
             specialPatientWarningHtml = `<p style="color: red; font-weight: bold; margin-top: 10px;">${textData.lblStatusMsg || ''}</p>`;
         }
-
-        return `
-            ${specialPatientWarningHtml}
-            <div class="form-group"><label>Select Leave Type:</label><div>${leaveTypeRadiosHtml}</div></div><hr>
-            <div class="form-group"><label>Mental State Exam:</label><p class="checklist-desc">${textData.lblMSE || ''}</p><div><label><input type="radio" name="${context}_mse" value="rn" checked> ${textData.optMSE_RN || 'Completed by RN'}</label></div><div><label><input type="radio" name="${context}_mse" value="other"> ${textData.optMSE_Other || 'Completed by HCA'}</label></div></div>
-            <div class="form-group"><label>Risk Assessment:</label><p class="checklist-desc">${textData.lblRisk || ''}</p><div><label><input type="radio" name="${context}_risk" value="rn" checked> ${textData.optRiskAssessmentRN || 'Completed by RN'}</label></div><div><label><input type="radio" name="${context}_risk" value="other"> ${textData.optRiskAssessment_Other || 'Completed by HCA'}</label></div></div>
-            <div class="form-group"><label>Awareness of Leave Conditions:</label><p class="checklist-desc">${textData.lblLeaveCondition || ''}</p><div><label><input type="checkbox" name="${context}_leave_con"> ${textData.chkLeaveCon || 'I am aware'}</label></div></div>
-            <div class="form-group"><label>Awareness of AWOL Procedure:</label><p class="checklist-desc">${textData.lblAWOL || ''}</p><div><label><input type="checkbox" name="${context}_awol"> ${textData.chkAwol || 'I am aware'}</label></div></div>
-            <div class="form-group">
-                <label>Ability to Contact Ward:</label><p class="checklist-desc">${textData.lbContactWard || ''}</p>
-                ${phoneRadiosHtml}
-                <div id="${context}-own-phone-container" class="hidden" style="margin-top: 10px;">
-                    <label for="${context}-phone-number-input">Patient's Phone Number:</label>
-                    <input type="tel" id="${context}-phone-number-input" placeholder="Enter phone number">
-                </div>
-            </div>
-        `;
+        return `${specialPatientWarningHtml}<div class="form-group"><label>Select Leave Type:</label><div>${leaveTypeRadiosHtml}</div></div><hr><div class="form-group"><label>Mental State Exam:</label><p class="checklist-desc">${textData.lblMSE||''}</p><div><label><input type="radio" name="${context}_mse" value="rn" checked> ${textData.optMSE_RN||'Completed by RN'}</label></div><div><label><input type="radio" name="${context}_mse" value="other"> ${textData.optMSE_Other||'Completed by HCA'}</label></div></div><div class="form-group"><label>Risk Assessment:</label><p class="checklist-desc">${textData.lblRisk||''}</p><div><label><input type="radio" name="${context}_risk" value="rn" checked> ${textData.optRiskAssessmentRN||'Completed by RN'}</label></div><div><label><input type="radio" name="${context}_risk" value="other"> ${textData.optRiskAssessment_Other||'Completed by HCA'}</label></div></div><div class="form-group"><label>Awareness of Leave Conditions:</label><p class="checklist-desc">${textData.lblLeaveCondition||''}</p><div><label><input type="checkbox" name="${context}_leave_con"> ${textData.chkLeaveCon||'I am aware'}</label></div></div><div class="form-group"><label>Awareness of AWOL Procedure:</label><p class="checklist-desc">${textData.lblAWOL||''}</p><div><label><input type="checkbox" name="${context}_awol"> ${textData.chkAwol||'I am aware'}</label></div></div><div class="form-group"><label>Ability to Contact Ward:</label><p class="checklist-desc">${textData.lbContactWard||''}</p>${phoneRadiosHtml}<div id="${context}-own-phone-container" class="hidden" style="margin-top: 10px;"><label for="${context}-phone-number-input">Patient's Phone Number:</label><input type="tel" id="${context}-phone-number-input" placeholder="Enter phone number"></div></div>`;
     }
 
     function handlePhoneSelectionChange(event) {
         const context = event.target.name.split('_')[0];
         const ownPhoneContainer = document.getElementById(`${context}-own-phone-container`);
-        if (event.target.value === 'own') {
-            ownPhoneContainer.classList.remove('hidden');
-        } else {
-            ownPhoneContainer.classList.add('hidden');
+        ownPhoneContainer.classList.toggle('hidden', event.target.value !== 'own');
+        if (event.target.value !== 'own') {
             document.getElementById(`${context}-phone-number-input`).value = '';
         }
     }
     
     function handleDurationChange(event) {
         const durationOtherInput = document.getElementById('duration-other-input');
-        if (event.target.value === 'other') {
-            durationOtherInput.classList.remove('hidden');
-        } else {
-            durationOtherInput.classList.add('hidden');
+        durationOtherInput.classList.toggle('hidden', event.target.value !== 'other');
+        if (event.target.value !== 'other') {
             durationOtherInput.value = '';
         }
     }
@@ -318,29 +275,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!staffMseChoice.getValue(true)) errors.push("Staff Completing MSE must be selected.");
         if (!shiftLeadChoice.getValue(true)) errors.push("Shift Lead Notified must be selected.");
         if (clothingDescInput.value.trim().length === 0) errors.push("Description of Clothing cannot be empty.");
-
         const durationSelection = addLeaveModal.querySelector('input[name="duration"]:checked').value;
         const otherDurationValue = document.getElementById('duration-other-input').value;
         if (durationSelection === 'other' && (!otherDurationValue || parseInt(otherDurationValue, 10) <= 0)) {
             errors.push("A valid duration in minutes is required when 'Other' is selected.");
         }
-
         const context = addLeaveModal.querySelector('input[name="leave-type"]:checked').value.toLowerCase();
         const phoneSelection = addLeaveModal.querySelector(`input[name="${context}_phone"]:checked`).value;
         const ownPhoneNumber = document.getElementById(`${context}-phone-number-input`).value.trim();
         if (phoneSelection === 'own' && ownPhoneNumber.length === 0) {
             errors.push("Patient's phone number must be entered when 'Own Phone' is selected.");
         }
-
         const leaveConCheckbox = addLeaveModal.querySelector(`input[name="${context}_leave_con"]`);
         const awolCheckbox = addLeaveModal.querySelector(`input[name="${context}_awol"]`);
-        if (!leaveConCheckbox || !leaveConCheckbox.checked) {
-            errors.push("You must confirm awareness of Leave Conditions.");
-        }
-        if (!awolCheckbox || !awolCheckbox.checked) {
-            errors.push("You must confirm awareness of the AWOL Procedure.");
-        }
-
+        if (!leaveConCheckbox || !leaveConCheckbox.checked) errors.push("You must confirm awareness of Leave Conditions.");
+        if (!awolCheckbox || !awolCheckbox.checked) errors.push("You must confirm awareness of the AWOL Procedure.");
         if (errors.length > 0) {
             alert("Please complete all required fields:\n\n- " + errors.join("\n- "));
             return false;
@@ -359,12 +308,10 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Please select a leave event to return.");
             return;
         }
-
         if (selectedLeave.ReturnTime) {
             alert("This leave has already been signed back in.");
             return;
         }
-
         returnLeaveTitle.textContent = `Log Return for ${selectedPatient.name}`;
         try {
             const response = await fetch(STAFF_API);
@@ -409,7 +356,25 @@ document.addEventListener('DOMContentLoaded', () => {
     lastHonosDate.addEventListener('click', () => openDatePicker('honos', 'Change Last HoNos Date'));
     lastUdsDate.addEventListener('click', () => openDatePicker('uds', 'Change Last UDS Date'));
     
-    document.getElementById('add-leave-btn').addEventListener('click', openAddLeaveModal);
+    document.getElementById('add-leave-btn').addEventListener('click', async () => {
+        if (!selectedPatient) {
+            alert("Please select a patient first.");
+            return;
+        }
+        try {
+            const response = await fetch(`/api/people/${selectedPatient.id}/leaves`);
+            const leaves = await response.json();
+            const hasActiveLeave = leaves.some(leave => !leave.ReturnTime);
+            if (hasActiveLeave) {
+                alert("This patient is already on an active leave and cannot be signed out again.");
+                return;
+            }
+            openAddLeaveModal();
+        } catch (error) {
+            console.error("Error checking for active leave:", error);
+            alert("Could not verify patient's leave status. Please try again.");
+        }
+    });
 
     viewReportBtn.addEventListener('click', () => {
         if (!selectedLeave) {
@@ -460,16 +425,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const leaveData = {
-            nhi: selectedPatient.nhi,
-            patient_name: selectedPatient.name,
-            leave_type: leaveType,
-            is_escorted_leave: isEscorted,
-            duration_minutes: duration,
-            staff_responsible_id: staffResponsibleChoice.getValue(true),
-            staff_mse_id: staffMseChoice.getValue(true),
-            senior_nurse_id: shiftLeadChoice.getValue(true),
-            leave_description: clothingDescInput.value.trim(),
-            contact_phone_number: contactPhoneNumber,
+            nhi: selectedPatient.nhi, patient_name: selectedPatient.name, leave_type: leaveType,
+            is_escorted_leave: isEscorted, duration_minutes: duration, staff_responsible_id: staffResponsibleChoice.getValue(true),
+            staff_mse_id: staffMseChoice.getValue(true), senior_nurse_id: shiftLeadChoice.getValue(true),
+            leave_description: clothingDescInput.value.trim(), contact_phone_number: contactPhoneNumber,
             mse_completed: addLeaveModal.querySelector(`input[name="${context}_mse"]:checked`)?.value === 'rn',
             risk_assessment_completed: addLeaveModal.querySelector(`input[name="${context}_risk"]:checked`)?.value === 'rn',
             leave_conditions_met: addLeaveModal.querySelector(`input[name="${context}_leave_con"]`)?.checked || false,
@@ -508,31 +467,25 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Please select the staff member signing the patient in.");
             return;
         }
-
         if (!selectedLeave) {
             alert("Error: No leave event is selected.");
             return;
         }
-
         returnModalConfirmBtn.disabled = true;
         returnModalConfirmBtn.textContent = "Saving...";
-
         try {
             const response = await fetch(`/api/leaves/${selectedLeave.ID}/return`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ signed_in_by_id: signedInById })
             });
-
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.error || "Failed to log return.");
             }
-
             alert("Patient return logged successfully!");
             returnLeaveModal.classList.add('hidden');
             await refreshAllData(selectedPatient.id);
-
         } catch (error) {
             console.error("Error logging return:", error);
             alert(`Error: ${error.message}`);

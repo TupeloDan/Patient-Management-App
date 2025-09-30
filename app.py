@@ -94,7 +94,23 @@ def get_person_leaves(person_id):
     person = person_manager.get_person_by_id(person_id)
     if not person or not person.nhi:
         return jsonify({"error": "Person not found or has no NHI"}), 404
+    
     leave_records = leave_manager.get_leave_for_person(person.nhi)
+
+    # --- FIX: Robustly format the dates and times on the server ---
+    for record in leave_records:
+        # The database may return datetime objects or ISO strings. Handle both.
+        leave_time_obj = record.get('LeaveTime')
+        if isinstance(leave_time_obj, str):
+            leave_time_obj = datetime.fromisoformat(leave_time_obj)
+        record['LeaveTime_formatted'] = leave_time_obj.strftime('%I:%M %p') if leave_time_obj else ''
+        
+        return_time_obj = record.get('ReturnTime')
+        if isinstance(return_time_obj, str):
+            return_time_obj = datetime.fromisoformat(return_time_obj)
+        record['ReturnTime_formatted'] = return_time_obj.strftime('%I:%M %p') if return_time_obj else 'N/A'
+    # --- END FIX ---
+            
     return jsonify(leave_records)
 
 @app.route("/api/people/<int:person_id>/assignments", methods=["PUT"])
@@ -154,6 +170,10 @@ def add_leave():
     data = request.json
     if not data: return jsonify({"error": "Invalid data provided"}), 400
 
+    existing_leaves = leave_manager.get_leave_for_person(data.get('nhi'))
+    if any(leave.get('ReturnTime') is None for leave in existing_leaves):
+        return jsonify({"error": "This patient is already on an active leave."}), 409
+
     required_fields = ['nhi', 'patient_name', 'leave_type', 'duration_minutes', 'staff_responsible_id', 'staff_mse_id', 'senior_nurse_id', 'leave_description']
     missing_fields = [field for field in required_fields if not data.get(field)]
     if missing_fields:
@@ -203,18 +223,11 @@ def add_leave():
         print(f"Error in the leave creation process: {e}")
         return jsonify({"error": "Failed to create leave record or report."}), 500
 
-# tupelodan/patient-management-app/Patient-Management-App-11280d08229d043412bbfeabe6ca9e8da6cbe246/app.py
-# ... (all other routes are unchanged) ...
-
-# tupelodan/patient-management-app/Patient-Management-App-11280d08229d043412bbfeabe6ca9e8da6cbe246/app.py
-# ... (all other routes are unchanged) ...
-
 @app.route('/api/leaves/<int:leave_id>/return', methods=['POST'])
 def log_leave_return(leave_id):
     data = request.json
     signed_in_by_id = data.get('signed_in_by_id')
-    if not signed_in_by_id:
-        return jsonify({"error": "Missing signed_in_by_id"}), 400
+    if not signed_in_by_id: return jsonify({"error": "Missing signed_in_by_id"}), 400
     try:
         return_time = datetime.now()
         success = leave_manager.log_return(leave_id, return_time, signed_in_by_id)
@@ -223,21 +236,14 @@ def log_leave_return(leave_id):
         
         leave_record = leave_manager.get_leave_by_id(leave_id)
         if not leave_record:
-             # This check is important, ensures we have a valid leave record
-             return jsonify({"error": "Leave record not found after update."}), 404
+             return jsonify({"error": "Leave record not found."}), 404
 
         person = person_manager.get_person_by_nhi(leave_record.nhi)
-        
-        # --- ROBUSTNESS FIX ---
-        # Only attempt to update the person if they were found
         if person:
             person_manager.update_field(person.id, 'leave_return', None)
         else:
-            # Log a warning if the person couldn't be found by NHI
             print(f"Warning: Could not find person with NHI {leave_record.nhi} to clear LeaveReturn status.")
-        # --- END FIX ---
 
-        # The rest of the logic remains the same
         all_staff_list = staff_manager.get_all_staff()
         staff_map = {staff['ID']: f"{staff['StaffName']} ({staff['Role']})" for staff in all_staff_list}
         
@@ -259,7 +265,6 @@ def log_leave_return(leave_id):
         print(f"Error logging patient return: {e}")
         return jsonify({"error": "Failed to log patient return."}), 500
 
-# ... (rest of app.py)
 # --- RUN THE APP ---
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
