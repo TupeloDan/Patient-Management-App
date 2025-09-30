@@ -134,60 +134,85 @@ def get_ui_text():
 # app.py
 # ... (other routes remain the same) ...
 
+# app.py
+# ... (all existing imports) ...
+from staff_data import StaffData
+from ui_text_data import UiTextData
+from report_generator import create_leave_report # NEW IMPORT
+
+# ... (all existing code) ...
+
+# ... (imports and other routes) ...
+
 @app.route("/api/leaves", methods=["POST"])
 def add_leave():
     data = request.json
-    if not data:
-        return jsonify({"error": "Invalid data provided"}), 400
-
-    # --- REFINED: Add robust server-side validation for all fields ---
-    required_fields = [
-        'nhi', 'patient_name', 'leave_type', 'duration_minutes', 
-        'staff_responsible_id', 'staff_mse_id', 'senior_nurse_id', 'leave_description'
-    ]
-    missing_fields = [field for field in required_fields if not data.get(field)]
-    if missing_fields:
-        return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
-    if not str(data.get('leave_description')).strip():
-         return jsonify({"error": "Description of clothing cannot be empty."}), 400
-
-    is_own_phone = data.get('is_own_phone', False)
-    contact_phone_number = data.get('contact_phone_number')
-    if is_own_phone and not contact_phone_number:
-        return jsonify({"error": "A phone number is required when 'Own Phone' is selected."}), 400
-
+    # ... (Your existing validation logic should be here) ...
+    
     try:
+        # Create the LeaveRecord object from the incoming data
         leave_date = date.today()
         leave_time = datetime.now()
         duration = int(data.get('duration_minutes', 0))
         expected_return = leave_time + timedelta(minutes=duration)
+        
         new_leave = LeaveRecord(
             nhi=data.get('nhi'),
             patient_name=data.get('patient_name'),
             leave_date=leave_date,
             leave_time=leave_time,
             expected_return_time=expected_return,
-            leave_type=data.get('leave_type'), # This now receives EGA, UCL, etc.
+            leave_type=data.get('leave_type'),
             leave_description=data.get('leave_description'),
             is_escorted_leave=data.get('is_escorted_leave'),
             staff_responsible_id=data.get('staff_responsible_id'),
-            staff_nurse_id=data.get('staff_mse_id'), # MODIFIED
+            staff_nurse_id=data.get('staff_mse_id'),
             senior_nurse_id=data.get('senior_nurse_id'),
-            contact_phone_number=contact_phone_number ,
+            contact_phone_number=data.get('contact_phone_number'),
             mse=data.get('mse_completed'),
             risk=data.get('risk_assessment_completed'),
             leave_conditions_met=data.get('leave_conditions_met'),
             awol_status=data.get('awol_aware'),
             has_ward_contact_info=data.get('contact_aware')
         )
+
+        # 1. Add the leave to the database
         success = leave_manager.add_leave(new_leave)
-        if success:
-            return jsonify({"message": "Leave created successfully"}), 201
-        else:
-            raise Exception("Failed to save to database.")
+        if not success:
+            raise Exception("Failed to save the initial leave record to the database.")
+
+        # 2. If successful, gather data for the report (CORRECTED)
+        person = person_manager.get_person_by_nhi(data.get('nhi'))
+        if not person:
+            # This is an edge case, but it's important to handle it.
+            # The leave was created, but we can't find the person for the report.
+            print(f"Warning: Leave {new_leave.id} created, but could not find person with NHI {data.get('nhi')} to generate report.")
+            return jsonify({"message": "Leave created, but report generation failed as person data could not be found."}), 201
+        
+        all_staff_list = staff_manager.get_all_staff()
+        # Create a dictionary to map staff IDs to their names
+        staff_map = {staff['ID']: f"{staff['StaffName']} ({staff['Role']})" for staff in all_staff_list}
+        
+        staff_details = {
+            'responsible_name': staff_map.get(data.get('staff_responsible_id')),
+            'mse_staff_name': staff_map.get(data.get('staff_mse_id')),
+            'senior_nurse_name': staff_map.get(data.get('senior_nurse_id'))
+        }
+
+        # 3. Generate the PDF report
+        report_filename = create_leave_report(new_leave, person, staff_details)
+
+        # 4. Save the report's filename back to the database
+        if report_filename:
+            leave_manager.update_leave_filename(new_leave.id, report_filename)
+        
+        return jsonify({"message": "Leave created and report generated successfully"}), 201
+
     except Exception as e:
-        print(f"Error creating leave record: {e}")
-        return jsonify({"error": "Failed to create leave record."}), 500
+        print(f"Error in the leave creation process: {e}")
+        return jsonify({"error": "Failed to create leave record or report."}), 500
+
+
 
 
 # --- RUN THE APP ---

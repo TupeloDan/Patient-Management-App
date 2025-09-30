@@ -116,7 +116,7 @@ class LeaveRecordData:
                 cursor.close()
                 conn.close()
 
-# ... (rest of the file is the same) ...
+
 
     def log_return(self, record_id: int, return_time: datetime, signed_in_by_id: int) -> bool:
         """Logs the return of a patient from leave."""
@@ -131,6 +131,27 @@ class LeaveRecordData:
             return True
         except Exception as e:
             print(f"Error logging return: {e}")
+            return False
+        finally:
+            if conn and conn.is_connected():
+                cursor.close()
+                conn.close()
+
+
+    def update_leave_filename(self, leave_id: int, filename: str) -> bool:
+        """Updates the FileName for a specific leave record."""
+        conn = get_db_connection()
+        if not conn: return False
+        try:
+            cursor = conn.cursor()
+            sql = "UPDATE LeaveLog SET FileName = %s WHERE ID = %s"
+            cursor.execute(sql, (filename, leave_id))
+            conn.commit()
+            print(f"Successfully updated FileName for leave ID: {leave_id}")
+            return True
+        except Exception as e:
+            print(f"Error updating leave filename: {e}")
+            conn.rollback()
             return False
         finally:
             if conn and conn.is_connected():

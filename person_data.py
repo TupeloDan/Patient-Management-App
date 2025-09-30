@@ -578,6 +578,35 @@ class PersonData:
         except Exception as e:
             print(f"Error updating UDS Due Date: {e}")
             return False
+        
+        # ... (inside the PersonData class)
+
+    def get_person_by_nhi(self, nhi: str) -> Person | None:
+        """
+        Retrieves a single person from the database by their NHI number.
+        """
+        conn = get_db_connection()
+        if not conn:
+            return None
+
+        person = None
+        try:
+            # Use our main view to get all the rich data for the person
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM vw_WhiteboardData WHERE NHI = %s", (nhi,))
+            row = cursor.fetchone()
+            if row:
+                person = self._load_person_from_row(row)
+        except Exception as e:
+            print(f"An error occurred in get_person_by_nhi: {e}")
+        finally:
+            if conn and conn.is_connected():
+                cursor.close()
+                conn.close()
+        
+        return person
+
+# ... (rest of the class)
 
     def _execute_transactional_update(self, sql: str, values: tuple):
         """A private helper to run any transactional update."""
