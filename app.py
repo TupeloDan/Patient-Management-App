@@ -173,7 +173,7 @@ def add_leave():
             staff_responsible_id=data.get('staff_responsible_id'),
             staff_nurse_id=data.get('staff_mse_id'), # MODIFIED
             senior_nurse_id=data.get('senior_nurse_id'),
-            contact_phone_number=contact_phone_number if is_own_phone else None,
+            contact_phone_number=contact_phone_number ,
             mse=data.get('mse_completed'),
             risk=data.get('risk_assessment_completed'),
             leave_conditions_met=data.get('leave_conditions_met'),

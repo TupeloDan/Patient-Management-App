@@ -177,11 +177,22 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.remove('hidden');
     }
 
+    function resetLeaveModalDefaults() {
+        leaveTypeEscortedRadio.checked = true;
+        addLeaveModal.querySelector('input[name="duration"][value="30"]').checked = true;
+        clothingDescInput.value = '';
+        staffResponsibleChoice.clearStore();
+        staffMseChoice.clearStore();
+        shiftLeadChoice.clearStore();
+    }
+
     async function openAddLeaveModal() {
         if (!selectedPatient) {
             alert("Please select a patient first.");
             return;
         }
+        
+        resetLeaveModalDefaults();
         addLeaveTitle.textContent = `New Leave Checklist for ${selectedPatient.name}`;
 
         try {
@@ -216,12 +227,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function buildChecklistHtml(textData, context) {
-        const phoneOptions = [
-            { id: 'ward1', label: textData.optWardOne || 'Ward Phone 1' },
-            { id: 'ward2', label: textData.optWardTwo || 'Ward Phone 2' },
-            { id: 'ward3', label: textData.optWardThree || 'Ward Phone 3' },
-            { id: 'own', label: textData.optOwnPhone || 'Own Phone' }
-        ];
+        // --- MODIFIED: Phone options are now conditional based on the context ---
+        let phoneOptions;
+        if (context === 'unescorted') {
+            phoneOptions = [
+                { id: 'knows_contact', label: 'Knows how to contact ward' },
+                { id: 'own', label: textData.optOwnPhone || 'Own Phone' }
+            ];
+        } else { // Escorted
+            phoneOptions = [
+                { id: 'ward1', label: textData.optWardOne || 'Ward Phone 1' },
+                { id: 'ward2', label: textData.optWardTwo || 'Ward Phone 2' },
+                { id: 'ward3', label: textData.optWardThree || 'Ward Phone 3' },
+                { id: 'own', label: textData.optOwnPhone || 'Own Phone' }
+            ];
+        }
+
         const phoneRadiosHtml = phoneOptions.map((opt, index) => `
             <div><label><input type="radio" name="${context}_phone" value="${opt.id}" ${index === 0 ? 'checked' : ''}> ${opt.label}</label></div>
         `).join('');
@@ -231,13 +252,11 @@ document.addEventListener('DOMContentLoaded', () => {
             : [{ id: 'UGA', label: 'Unescorted Ground Access (UGA)' }, { id: 'UCL', label: 'Unescorted Community Leave (UCL)' }];
         
         const leaveTypeRadiosHtml = leaveTypeOptions.map((opt, index) => `
-            <label style="margin-right: 15px;">
-                <input type="radio" name="${context}_leave_type" value="${opt.id}" ${index === 0 ? 'checked' : ''}> ${opt.label}
-            </label>
+            <label style="margin-right: 15px;"><input type="radio" name="${context}_leave_type" value="${opt.id}" ${index === 0 ? 'checked' : ''}> ${opt.label}</label>
         `).join('');
 
         return `
-            <div class="form-group"><label>Leave Type:</label><div>${leaveTypeRadiosHtml}</div></div><hr>
+            <div class="form-group"><label>Select Leave Type:</label><div>${leaveTypeRadiosHtml}</div></div><hr>
             <div class="form-group"><label>Mental State Exam:</label><p class="checklist-desc">${textData.lblMSE || ''}</p><div><label><input type="radio" name="${context}_mse" value="rn" checked> ${textData.optMSE_RN || 'Completed by RN'}</label></div><div><label><input type="radio" name="${context}_mse" value="other"> ${textData.optMSE_Other || 'Completed by HCA'}</label></div></div>
             <div class="form-group"><label>Risk Assessment:</label><p class="checklist-desc">${textData.lblRisk || ''}</p><div><label><input type="radio" name="${context}_risk" value="rn" checked> ${textData.optRiskAssessmentRN || 'Completed by RN'}</label></div><div><label><input type="radio" name="${context}_risk" value="other"> ${textData.optRiskAssessment_Other || 'Completed by HCA'}</label></div></div>
             <div class="form-group"><label>Awareness of Leave Conditions:</label><p class="checklist-desc">${textData.lblLeaveCondition || ''}</p><div><label><input type="checkbox" name="${context}_leave_con"> ${textData.chkLeaveCon || 'I am aware'}</label></div></div>
@@ -246,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <label>Ability to Contact Ward:</label><p class="checklist-desc">${textData.lbContactWard || ''}</p>
                 ${phoneRadiosHtml}
                 <div id="${context}-own-phone-container" class="hidden" style="margin-top: 10px;">
-                    <label for="${context}-phone-number-input">Your Phone Number:</label>
+                    <label for="${context}-phone-number-input">Patient's Phone Number:</label>
                     <input type="tel" id="${context}-phone-number-input" placeholder="Enter phone number">
                 </div>
             </div>
@@ -291,11 +310,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const phoneSelection = addLeaveModal.querySelector(`input[name="${context}_phone"]:checked`).value;
         const ownPhoneNumber = document.getElementById(`${context}-phone-number-input`).value.trim();
         if (phoneSelection === 'own' && ownPhoneNumber.length === 0) {
-            errors.push("Your phone number must be entered when 'Own Phone' is selected.");
+            errors.push("Patient's phone number must be entered when 'Own Phone' is selected.");
+        }
+
+        const leaveConCheckbox = addLeaveModal.querySelector(`input[name="${context}_leave_con"]`);
+        const awolCheckbox = addLeaveModal.querySelector(`input[name="${context}_awol"]`);
+        if (!leaveConCheckbox || !leaveConCheckbox.checked) {
+            errors.push("You must confirm awareness of Leave Conditions.");
+        }
+        if (!awolCheckbox || !awolCheckbox.checked) {
+            errors.push("You must confirm awareness of the AWOL Procedure.");
         }
 
         if (errors.length > 0) {
-            alert("Please fix the following issues:\n\n- " + errors.join("\n- "));
+            alert("Please complete all required fields:\n\n- " + errors.join("\n- "));
             return false;
         }
         return true;
@@ -356,9 +384,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const isEscorted = addLeaveModal.querySelector('input[name="leave-type"]:checked').value === 'Escorted';
         const context = isEscorted ? 'escorted' : 'unescorted';
-        const phoneSelection = addLeaveModal.querySelector(`input[name="${context}_phone"]:checked`).value;
+        const phoneRadio = addLeaveModal.querySelector(`input[name="${context}_phone"]:checked`);
+        const phoneSelection = phoneRadio.value;
         const ownPhoneNumber = document.getElementById(`${context}-phone-number-input`).value.trim();
         const leaveType = addLeaveModal.querySelector(`input[name="${context}_leave_type"]:checked`).value;
+        
+        // --- MODIFIED: Logic to get the correct contact phone number ---
+        let contactPhoneNumber = null;
+        if (phoneSelection === 'own') {
+            contactPhoneNumber = ownPhoneNumber;
+        } else if (phoneSelection === 'knows_contact') {
+            contactPhoneNumber = '0';
+        } else { // It's a ward phone
+            const labelText = phoneRadio.closest('label').textContent;
+            const match = labelText.match(/(\d{3}[\s-]?\d{3}[\s-]?\d{3,4}|\d{10,11})/);
+            if (match) {
+                contactPhoneNumber = match[0];
+            }
+        }
 
         const leaveData = {
             nhi: selectedPatient.nhi,
@@ -370,8 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
             staff_mse_id: staffMseChoice.getValue(true),
             senior_nurse_id: shiftLeadChoice.getValue(true),
             leave_description: clothingDescInput.value.trim(),
-            is_own_phone: phoneSelection === 'own',
-            contact_phone_number: phoneSelection === 'own' ? ownPhoneNumber : null,
+            contact_phone_number: contactPhoneNumber,
             mse_completed: addLeaveModal.querySelector(`input[name="${context}_mse"]:checked`)?.value === 'rn',
             risk_assessment_completed: addLeaveModal.querySelector(`input[name="${context}_risk"]:checked`)?.value === 'rn',
             leave_conditions_met: addLeaveModal.querySelector(`input[name="${context}_leave_con"]`)?.checked || false,
