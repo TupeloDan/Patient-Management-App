@@ -157,3 +157,30 @@ class LeaveRecordData:
             if conn and conn.is_connected():
                 cursor.close()
                 conn.close()
+
+    # leave_record_data.py
+# ... (inside the LeaveRecordData class)
+
+    def get_leave_by_id(self, leave_id: int) -> LeaveRecord | None:
+        """Gets a single leave record by its primary ID."""
+        conn = get_db_connection()
+        if not conn:
+            return None
+        
+        record = None
+        try:
+            # Using the vw_LoadLeaveForCurrentPeople view to get rich data
+            sql = "SELECT * FROM LeaveLog WHERE ID = %s"
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(sql, (leave_id,))
+            row = cursor.fetchone()
+            if row:
+                record = self._load_leave_from_row(row)
+        except Exception as e:
+            print(f"Error in get_leave_by_id: {e}")
+        finally:
+            if conn and conn.is_connected():
+                cursor.close()
+                conn.close()
+        
+        return record

@@ -51,7 +51,7 @@ def create_leave_report(leave_record, person, staff_details):
         HTML(string=html_string).write_pdf(output_path)
 
         print(f"Successfully generated report: {output_path}")
-        return relative_path
+        return filename
 
     except Exception as e:
         print(f"Error generating PDF report: {e}")

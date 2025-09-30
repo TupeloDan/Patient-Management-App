@@ -51,6 +51,7 @@
                 <button id="view-checklist-btn">View Report</button>
             </div>
         </div>
+        
 
         <div id="date-picker-modal" class="modal-backdrop hidden">
             <div class="modal-content"><h3 id="modal-title">Change Date</h3><div class="date-input-group"><input type="text" id="modal-date-input" placeholder="dd/mm/yyyy"><button id="modal-today-btn">Today</button></div><div class="modal-actions"><button id="modal-cancel-btn">Cancel</button><button id="modal-save-btn">Save</button></div></div>
@@ -100,6 +101,19 @@
                 <div class="modal-actions">
                     <button id="leave-modal-cancel-btn">Cancel</button>
                     <button id="leave-modal-submit-btn">Submit</button>
+                </div>
+            </div>
+        </div>
+        <div id="return-leave-modal" class="modal-backdrop hidden">
+            <div class="modal-content">
+                <h3 id="return-leave-title">Log Patient Return</h3>
+                <div class="form-group">
+                    <label for="return-signed-in-by-select">Signed In By:</label>
+                    <select id="return-signed-in-by-select"></select>
+                </div>
+                <div class="modal-actions">
+                    <button id="return-modal-cancel-btn">Cancel</button>
+                    <button id="return-modal-confirm-btn">Confirm Return</button>
                 </div>
             </div>
         </div>

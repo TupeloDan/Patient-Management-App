@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const staffResponsibleChoice = new Choices('#staff-responsible-select', { removeItemButton: true, searchResultLimit: 10 });
     const staffMseChoice = new Choices('#staff-mse-select', { removeItemButton: true, searchResultLimit: 10 });
     const shiftLeadChoice = new Choices('#shift-lead-select', { removeItemButton: true, searchResultLimit: 10 });
+    const returnSignedInByChoice = new Choices('#return-signed-in-by-select', { removeItemButton: true, searchResultLimit: 10 });
 
     // --- API Endpoints & Config ---
     const PATIENTS_API = '/api/people';
@@ -42,6 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const leaveModalCancelBtn = document.getElementById('leave-modal-cancel-btn');
     const leaveTypeEscortedRadio = document.getElementById('leave-type-escorted');
     const leaveTypeUnescortedRadio = document.getElementById('leave-type-unescorted');
+    const viewReportBtn = document.getElementById('view-checklist-btn');
+    const returnLeaveBtn = document.getElementById('return-leave-btn');
+    const returnLeaveModal = document.getElementById('return-leave-modal');
+    const returnModalCancelBtn = document.getElementById('return-modal-cancel-btn');
+    const returnModalConfirmBtn = document.getElementById('return-modal-confirm-btn');
+    const returnLeaveTitle = document.getElementById('return-leave-title');
 
     const taskToggles = {
         'rel_security': document.getElementById('rel-security-toggle'), 'profile': document.getElementById('profile-toggle'),
@@ -57,7 +64,12 @@ document.addEventListener('DOMContentLoaded', () => {
             allPatients = await response.json();
             renderPatientList();
             if (selectedIdToPreserve) {
-                handlePatientSelection(selectedIdToPreserve);
+                const patientStillExists = allPatients.some(p => p.id === selectedIdToPreserve);
+                if (patientStillExists) {
+                    handlePatientSelection(selectedIdToPreserve);
+                } else {
+                    detailsPane.classList.add('hidden');
+                }
             }
         } catch (error) { console.error("Error refreshing data:", error); }
     }
@@ -127,7 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const leaveDate = new Date(leave.LeaveDate).toLocaleDateString('en-NZ');
                 const leaveTime = leave.LeaveTime ? new Date(leave.LeaveTime).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }) : '';
                 const returnTime = leave.ReturnTime ? new Date(leave.ReturnTime).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
-                item.textContent = `${leaveDate} | ${leaveTime} - ${returnTime} | ${leave.LeaveType}`;
+                const status = leave.ReturnTime ? 'Returned' : 'Out';
+                item.textContent = `${leaveDate} | ${leaveTime} - ${returnTime} | ${leave.LeaveType} [${status}]`;
+                item.classList.toggle('returned', !!leave.ReturnTime);
                 if (leaveDate === today) { leavesTodayList.appendChild(item); } 
                 else { allLeavesList.appendChild(item); }
             });
@@ -254,7 +268,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <label style="margin-right: 15px;"><input type="radio" name="${context}_leave_type" value="${opt.id}" ${index === 0 ? 'checked' : ''}> ${opt.label}</label>
         `).join('');
 
-        // --- NEW: Conditionally create the warning message HTML ---
         let specialPatientWarningHtml = '';
         if (context === 'escorted' && selectedPatient && selectedPatient.is_special_patient) {
             specialPatientWarningHtml = `<p style="color: red; font-weight: bold; margin-top: 10px;">${textData.lblStatusMsg || ''}</p>`;
@@ -341,6 +354,30 @@ document.addEventListener('DOMContentLoaded', () => {
         unescortedChecklistContainer.classList.toggle('hidden', isEscorted);
     }
     
+    async function openReturnModal() {
+        if (!selectedLeave) {
+            alert("Please select a leave event to return.");
+            return;
+        }
+
+        if (selectedLeave.ReturnTime) {
+            alert("This leave has already been signed back in.");
+            return;
+        }
+
+        returnLeaveTitle.textContent = `Log Return for ${selectedPatient.name}`;
+        try {
+            const response = await fetch(STAFF_API);
+            const allStaff = await response.json();
+            const staffChoices = allStaff.map(s => ({ value: s.ID, label: `${s.StaffName} (${s.Role})` }));
+            returnSignedInByChoice.setChoices(staffChoices, 'value', 'label', true);
+            returnLeaveModal.classList.remove('hidden');
+        } catch (error) {
+            console.error("Could not load staff for return modal:", error);
+            alert("Error: Could not load staff list.");
+        }
+    }
+
     // --- EVENT LISTENERS ---
     modalCancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
     modalTodayBtn.addEventListener('click', () => datePicker.setDate(new Date(), true));
@@ -368,10 +405,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('last-plan-date').addEventListener('click', () => openDatePicker('plan', 'Change Last Plan Date'));
-    document.getElementById('last-honos-date').addEventListener('click', () => openDatePicker('honos', 'Change Last HoNos Date'));
-    document.getElementById('last-uds-date').addEventListener('click', () => openDatePicker('uds', 'Change Last UDS Date'));
+    lastPlanDate.addEventListener('click', () => openDatePicker('plan', 'Change Last Plan Date'));
+    lastHonosDate.addEventListener('click', () => openDatePicker('honos', 'Change Last HoNos Date'));
+    lastUdsDate.addEventListener('click', () => openDatePicker('uds', 'Change Last UDS Date'));
+    
     document.getElementById('add-leave-btn').addEventListener('click', openAddLeaveModal);
+
+    viewReportBtn.addEventListener('click', () => {
+        if (!selectedLeave) {
+            alert('Please select a leave event from one of the lists first.');
+            return;
+        }
+        if (selectedLeave.FileName) {
+            const reportUrl = `/reports/${selectedLeave.FileName.replace(/\\/g, '/')}`;
+            window.open(reportUrl, '_blank');
+        } else {
+            alert('No report is available for this leave event.');
+        }
+    });
 
     leaveModalCancelBtn.addEventListener('click', () => addLeaveModal.classList.add('hidden'));
     leaveTypeEscortedRadio.addEventListener('change', toggleChecklists);
@@ -445,6 +496,49 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             leaveModalSubmitBtn.disabled = false;
             leaveModalSubmitBtn.textContent = 'Submit';
+        }
+    });
+
+    returnLeaveBtn.addEventListener('click', openReturnModal);
+    returnModalCancelBtn.addEventListener('click', () => returnLeaveModal.classList.add('hidden'));
+
+    returnModalConfirmBtn.addEventListener('click', async () => {
+        const signedInById = returnSignedInByChoice.getValue(true);
+        if (!signedInById) {
+            alert("Please select the staff member signing the patient in.");
+            return;
+        }
+
+        if (!selectedLeave) {
+            alert("Error: No leave event is selected.");
+            return;
+        }
+
+        returnModalConfirmBtn.disabled = true;
+        returnModalConfirmBtn.textContent = "Saving...";
+
+        try {
+            const response = await fetch(`/api/leaves/${selectedLeave.ID}/return`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ signed_in_by_id: signedInById })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Failed to log return.");
+            }
+
+            alert("Patient return logged successfully!");
+            returnLeaveModal.classList.add('hidden');
+            await refreshAllData(selectedPatient.id);
+
+        } catch (error) {
+            console.error("Error logging return:", error);
+            alert(`Error: ${error.message}`);
+        } finally {
+            returnModalConfirmBtn.disabled = false;
+            returnModalConfirmBtn.textContent = "Confirm Return";
         }
     });
 
