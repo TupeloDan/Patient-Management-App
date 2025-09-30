@@ -203,11 +203,18 @@ def add_leave():
         print(f"Error in the leave creation process: {e}")
         return jsonify({"error": "Failed to create leave record or report."}), 500
 
+# tupelodan/patient-management-app/Patient-Management-App-11280d08229d043412bbfeabe6ca9e8da6cbe246/app.py
+# ... (all other routes are unchanged) ...
+
+# tupelodan/patient-management-app/Patient-Management-App-11280d08229d043412bbfeabe6ca9e8da6cbe246/app.py
+# ... (all other routes are unchanged) ...
+
 @app.route('/api/leaves/<int:leave_id>/return', methods=['POST'])
 def log_leave_return(leave_id):
     data = request.json
     signed_in_by_id = data.get('signed_in_by_id')
-    if not signed_in_by_id: return jsonify({"error": "Missing signed_in_by_id"}), 400
+    if not signed_in_by_id:
+        return jsonify({"error": "Missing signed_in_by_id"}), 400
     try:
         return_time = datetime.now()
         success = leave_manager.log_return(leave_id, return_time, signed_in_by_id)
@@ -216,14 +223,21 @@ def log_leave_return(leave_id):
         
         leave_record = leave_manager.get_leave_by_id(leave_id)
         if not leave_record:
-             return jsonify({"error": "Leave record not found."}), 404
+             # This check is important, ensures we have a valid leave record
+             return jsonify({"error": "Leave record not found after update."}), 404
 
         person = person_manager.get_person_by_nhi(leave_record.nhi)
-        if not person:
-            return jsonify({"error": "Associated person not found."}), 404
+        
+        # --- ROBUSTNESS FIX ---
+        # Only attempt to update the person if they were found
+        if person:
+            person_manager.update_field(person.id, 'leave_return', None)
+        else:
+            # Log a warning if the person couldn't be found by NHI
+            print(f"Warning: Could not find person with NHI {leave_record.nhi} to clear LeaveReturn status.")
+        # --- END FIX ---
 
-        person_manager.update_field(person.id, 'leave_return', None)
-
+        # The rest of the logic remains the same
         all_staff_list = staff_manager.get_all_staff()
         staff_map = {staff['ID']: f"{staff['StaffName']} ({staff['Role']})" for staff in all_staff_list}
         
@@ -240,10 +254,12 @@ def log_leave_return(leave_id):
         create_leave_report(leave_record, person, staff_details, return_details)
 
         return jsonify({"message": "Patient return logged and report updated."}), 200
+        
     except Exception as e:
         print(f"Error logging patient return: {e}")
         return jsonify({"error": "Failed to log patient return."}), 500
 
+# ... (rest of app.py)
 # --- RUN THE APP ---
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
