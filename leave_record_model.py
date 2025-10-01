@@ -20,7 +20,7 @@ class LeaveRecord:
     awol_status: bool = False
     has_ward_contact_info: bool = False
     contact_phone_number: str | None = None
-    is_special_leave: bool = False
+    is_special_patient: bool = False
     is_escorted_leave: bool = False
     senior_nurse_notified: bool = False
     senior_nurse_id: int | None = None

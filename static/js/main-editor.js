@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const escortedChecklistContainer = document.getElementById('escorted-checklist-container');
     const unescortedChecklistContainer = document.getElementById('unescorted-checklist-container');
     const leaveModalSubmitBtn = document.getElementById('leave-modal-submit-btn');
+    const clothingDescInput = document.getElementById('clothing-desc-input');
+    const clothingDescLabel = document.getElementById('clothing-desc-label');
     const lastPlanDate = document.getElementById('last-plan-date');
     const planDueDate = document.getElementById('plan-due-date');
     const lastHonosDate = document.getElementById('last-honos-date');
@@ -48,8 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const returnModalCancelBtn = document.getElementById('return-modal-cancel-btn');
     const returnModalConfirmBtn = document.getElementById('return-modal-confirm-btn');
     const returnLeaveTitle = document.getElementById('return-leave-title');
-    const clothingDescInput = document.getElementById('clothing-desc-input');
-    const clothingDescLabel = document.getElementById('clothing-desc-label'); // NEW
+
     const taskToggles = {
         'rel_security': document.getElementById('rel-security-toggle'), 'profile': document.getElementById('profile-toggle'),
         'metobolic': document.getElementById('metobolic-toggle'), 'bloods': document.getElementById('bloods-toggle'),
@@ -136,19 +137,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const item = document.createElement('div');
                 item.className = 'leave-item';
                 item.addEventListener('click', () => handleLeaveSelection(leave, item));
-
-                // --- THIS IS THE FIX ---
                 const leaveDate = new Date(leave.LeaveDate).toLocaleDateString('en-NZ');
                 const leaveTime = leave.LeaveTime_formatted; 
                 const leaveType = leave.LeaveType;
                 const duration = leave.DurationMinutes ? `${leave.DurationMinutes} mins` : '';
                 const status = leave.ReturnTime ? 'Returned' : 'Out';
-
                 item.textContent = `${leaveDate}, ${leaveTime}, ${leaveType}, ${duration}, ${status}`;
-                // --- END FIX ---
-
                 item.classList.toggle('returned', !!leave.ReturnTime);
-
                 if (leaveDate === today) { leavesTodayList.appendChild(item); } 
                 else { allLeavesList.appendChild(item); }
             });
@@ -272,7 +267,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function validateLeaveForm() {
         const errors = [];
         if (!staffResponsibleChoice.getValue(true)) errors.push("Staff Responsible must be selected.");
-        if (!staffMseChoice.getValue(true)) errors.push("Staff Completing MSE must be selected.");
+        // --- THIS IS THE FIX ---
+        // The check for staffMseChoice is removed, making it optional.
+        // --- END FIX ---
         if (!shiftLeadChoice.getValue(true)) errors.push("Shift Lead Notified must be selected.");
         if (clothingDescInput.value.trim().length === 0) errors.push("Description of Clothing cannot be empty.");
         const durationSelection = addLeaveModal.querySelector('input[name="duration"]:checked').value;
@@ -520,25 +517,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const patientId = selectedPatient.id;
         await updateField('mdt_day', event.target.value);
         await refreshAllData(patientId);
-    });
-    clothingDescLabel.addEventListener('click', async () => {
-        if (!selectedPatient) return;
-
-        try {
-            const response = await fetch(`/api/people/${selectedPatient.id}/last-leave-description`);
-            if (!response.ok) {
-                throw new Error("Could not fetch last description.");
-            }
-            const data = await response.json();
-            if (data.last_description) {
-                clothingDescInput.value = data.last_description;
-            } else {
-                alert("No previous clothing description found for this patient.");
-            }
-        } catch (error) {
-            console.error("Error fetching last description:", error);
-            alert(error.message);
-        }
     });
 
     // --- INITIALIZE ---
