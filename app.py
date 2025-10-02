@@ -53,6 +53,10 @@ def main_editor():
 def management():
     return render_template('management.html')
 
+@app.route('/text-editor')
+def text_editor():
+    return render_template('text-editor.html')
+
 @app.route('/reports/<path:filename>')
 def serve_report(filename):
     return send_from_directory(REPORTS_DIRECTORY, filename)
@@ -107,9 +111,17 @@ def get_delegated_staff():
 @app.route("/api/ui-text", methods=["GET"])
 def get_ui_text():
     context = request.args.get('context')
-    if not context: return jsonify({"error": "A 'context' parameter is required."}), 400
+    if not context: 
+        return jsonify({"error": "A 'context' parameter is required."}), 400
+    
     text_elements = ui_text_manager.get_ui_text_by_context(context)
+    
+    # DEBUGGING LINE ADDED HERE
+    print(f"--- Fetching UI Text for context '{context}': Found {len(text_elements)} items. ---")
+    
     return jsonify(text_elements)
+
+# ... (all other routes remain the same)
 
 @app.route("/api/people/<int:person_id>/leaves", methods=["GET"])
 def get_person_leaves(person_id):
@@ -325,6 +337,24 @@ def log_leave_return(leave_id):
     except Exception as e:
         print(f"Error logging patient return: {e}")
         return jsonify({"error": "Failed to log patient return."}), 500
+
+@app.route('/api/ui-text/update', methods=['POST'])
+def update_ui_texts():
+    data = request.json
+    context = data.get('context')
+    updates = data.get('updates')
+
+    if not context or not updates:
+        return jsonify({"error": "Missing context or updates data"}), 400
+
+    try:
+        for control_name, new_text in updates.items():
+            ui_text_manager.update_ui_text(context, control_name, new_text)
+        
+        return jsonify({"message": "UI text updated successfully"}), 200
+    except Exception as e:
+        print(f"Error in update_ui_texts: {e}")
+        return jsonify({"error": "An internal error occurred."}), 500
 
 
 if __name__ == '__main__':

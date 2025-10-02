@@ -67,3 +67,9 @@ button:hover {
 .hidden {
     display: none;
 }
+/* Style for the dynamically created textareas in the text-editor */
+#text-fields-container .form-group textarea {
+    width: 100%;
+    box-sizing: border-box; /* This prevents padding from making the box too wide */
+    min-height: 60px; /* Ensures a decent default height */
+}

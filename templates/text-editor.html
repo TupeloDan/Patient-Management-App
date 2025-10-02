@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Text Editor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
+</head>
+<body>
+    <header class="header-container">
+        <h1>UI Text Editor</h1>
+    </header>
+
+    <main class="editor-container">
+        <div class="form-group">
+            <label for="context-select">Select Checklist to Edit:</label>
+            <select id="context-select">
+                <option value="">Select a context...</option>
+                <option value="Escorted">Escorted Leave Checklist</option>
+                <option value="Unescorted">Unescorted Leave Checklist</option>
+            </select>
+        </div>
+
+        <div id="text-fields-container" class="hidden">
+            </div>
+
+        <div id="actions-container" class="form-actions hidden">
+            <button id="save-changes-btn">Save Changes</button>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/text-editor.js') }}"></script>
+</body>
+</html>
