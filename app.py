@@ -11,7 +11,7 @@ from leave_record_model import LeaveRecord
 from notice_data import NoticeData
 from staff_data import StaffData
 from ui_text_data import UiTextData
-from mha_section_data import MhaSectionData # New import
+from mha_section_data import MhaSectionData
 
 # --- Helper function for JSON serialization ---
 def json_serial(obj):
@@ -29,7 +29,7 @@ leave_manager = LeaveRecordData()
 notice_manager = NoticeData()
 staff_manager = StaffData()
 ui_text_manager = UiTextData()
-mha_section_manager = MhaSectionData() # New instance
+mha_section_manager = MhaSectionData()
 
 # ===================================================================
 # --- RENDER ROUTES ---
@@ -39,9 +39,7 @@ mha_section_manager = MhaSectionData() # New instance
 def index():
     return render_template('index.html')
 
-@app.route('/editor')
-def editor():
-    return render_template('editor.html')
+# The '/editor' route is now removed
 
 @app.route('/main-editor')
 def main_editor():
@@ -209,9 +207,9 @@ def move_person():
     else:
         return jsonify({"error": "Failed to move person"}), 500
 
-# This is the original add_leave function, which I have restored
 @app.route("/api/leaves", methods=["POST"])
 def add_leave():
+    # This is the simplified, original add_leave function
     data = request.json
     if not data: return jsonify({"error": "Invalid data provided"}), 400
     try:

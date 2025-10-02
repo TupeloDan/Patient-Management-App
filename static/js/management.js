@@ -1,8 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const actionSelect = document.getElementById('action-select');
+    // --- DOM Elements ---
+    const managementHeader = document.getElementById('management-header');
     const assignForm = document.getElementById('assign-form');
-    const editForm = document.getElementById('edit-form');
-    const moveForm = document.getElementById('move-form');
+    const manageForms = document.getElementById('manage-forms');
 
     // Assign form elements
     const assignRoomSelect = document.getElementById('assign-room-select');
@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const assignSubmitBtn = document.getElementById('assign-submit-btn');
 
     // Edit form elements
-    const editPersonSelect = document.getElementById('edit-person-select');
     const editNhiInput = document.getElementById('edit-nhi');
     const editNameInput = document.getElementById('edit-name');
     const editLegalStatusSelect = document.getElementById('edit-legal-status');
@@ -24,131 +23,179 @@ document.addEventListener('DOMContentLoaded', () => {
     const editSpecialNotesTextarea = document.getElementById('edit-special-notes');
     const editSubmitBtn = document.getElementById('edit-submit-btn');
 
+    // Assignment form elements
+    const clinicianSelect = document.getElementById('clinician-select');
+    const availableStaffList = document.getElementById('available-staff-list');
+    const casemanagerList = document.getElementById('casemanager-list');
+    const associateList = document.getElementById('associate-list');
+    const assignCmBtn = document.getElementById('assign-cm');
+    const removeCmBtn = document.getElementById('remove-cm');
+    const assignAssocBtn = document.getElementById('assign-assoc');
+    const removeAssocBtn = document.getElementById('remove-assoc');
+    const saveAssignmentsBtn = document.getElementById('save-assignments-btn');
+    
     // Move form elements
-    const movePersonSelect = document.getElementById('move-person-select');
     const moveRoomSelect = document.getElementById('move-room-select');
     const moveSubmitBtn = document.getElementById('move-submit-btn');
 
+    // --- State Variables ---
     let allPeople = [];
+    let allStaff = [];
     let mhaSections = [];
+    let currentPerson = null;
+    let personId = null;
 
+    // --- Initialization ---
     async function initialize() {
-        await Promise.all([fetchPeople(), fetchMhaSections()]);
-        populateDropdowns();
-    }
+        const params = new URLSearchParams(window.location.search);
+        const action = params.get('action');
+        personId = params.get('id');
 
-    async function fetchPeople() {
-        try {
-            const response = await fetch('/api/people');
-            allPeople = await response.json();
-        } catch (error) {
-            console.error('Error fetching people:', error);
+        await Promise.all([
+            fetch('/api/people').then(res => res.json()).then(data => allPeople = data),
+            fetch('/api/mha-sections').then(res => res.json()).then(data => mhaSections = data),
+            fetch('/api/staff').then(res => res.json()).then(data => allStaff = data)
+        ]);
+        
+        if (action === 'assign') {
+            setupAssignForm();
+        } else if (action === 'manage' && personId) {
+            currentPerson = allPeople.find(p => p.id == personId);
+            if (currentPerson) {
+                setupManageForms();
+            } else {
+                managementHeader.textContent = "Error: Person not found";
+            }
         }
     }
 
-    async function fetchMhaSections() {
-        try {
-            const response = await fetch('/api/mha-sections');
-            mhaSections = await response.json();
-        } catch (error) {
-            console.error('Error fetching MHA sections:', error);
-        }
-    }
+    // --- Form Setup ---
+    function setupAssignForm() {
+        managementHeader.textContent = "Assign New Person";
+        assignForm.classList.remove('hidden');
 
-    function populateDropdowns() {
-        // Clear existing options
-        assignRoomSelect.innerHTML = '<option value="">Select a room...</option>';
-        editPersonSelect.innerHTML = '<option value="">Select a person...</option>';
-        movePersonSelect.innerHTML = '<option value="">Select a person...</option>';
-        moveRoomSelect.innerHTML = '<option value="">Select a room...</option>';
-        assignLegalStatusSelect.innerHTML = '<option value="">Select a status...</option>';
-        editLegalStatusSelect.innerHTML = '<option value="">Select a status...</option>';
-
+        // Populate empty rooms
         allPeople.forEach(person => {
-            if (!person.nhi) { // Empty rooms
+            if (!person.nhi) {
                 const option = document.createElement('option');
                 option.value = person.room;
                 option.textContent = person.room;
-                assignRoomSelect.appendChild(option.cloneNode(true));
-                moveRoomSelect.appendChild(option);
-            } else { // Occupied rooms
-                const option = document.createElement('option');
-                option.value = person.id;
-                option.textContent = `${person.name} (${person.room})`;
-                editPersonSelect.appendChild(option.cloneNode(true));
-                movePersonSelect.appendChild(option);
+                assignRoomSelect.appendChild(option);
             }
         });
 
+        // Populate legal statuses
         mhaSections.forEach(section => {
             const option = document.createElement('option');
             option.value = section.ID;
             option.textContent = section.LegalStatus;
-            assignLegalStatusSelect.appendChild(option.cloneNode(true));
-            editLegalStatusSelect.appendChild(option);
+            assignLegalStatusSelect.appendChild(option);
         });
     }
 
-    actionSelect.addEventListener('change', () => {
-        assignForm.classList.add('hidden');
-        editForm.classList.add('hidden');
-        moveForm.classList.add('hidden');
+    function setupManageForms() {
+        managementHeader.textContent = `Managing: ${currentPerson.name} (${currentPerson.room})`;
+        manageForms.classList.remove('hidden');
 
-        const selectedAction = actionSelect.value;
-        if (selectedAction === 'assign') {
-            assignForm.classList.remove('hidden');
-        } else if (selectedAction === 'edit') {
-            editForm.classList.remove('hidden');
-        } else if (selectedAction === 'move') {
-            moveForm.classList.remove('hidden');
+        // 1. Populate Edit Details Form
+        editNhiInput.value = currentPerson.nhi || '';
+        editNameInput.value = currentPerson.name || '';
+        mhaSections.forEach(section => {
+            const option = document.createElement('option');
+            option.value = section.ID;
+            option.textContent = section.LegalStatus;
+            editLegalStatusSelect.appendChild(option);
+        });
+        editLegalStatusSelect.value = currentPerson.legal_id || '';
+        editSpecialPatientCheckbox.checked = currentPerson.is_special_patient;
+        editVnrCheckbox.checked = currentPerson.has_vnr;
+        editSpecialNotesTextarea.value = currentPerson.special_notes || '';
+
+        // 2. Populate Staff Assignments Form
+        populateStaffLists();
+
+        // 3. Populate Move Form
+        allPeople.forEach(person => {
+            if (!person.nhi) {
+                const option = document.createElement('option');
+                option.value = person.room;
+                option.textContent = person.room;
+                moveRoomSelect.appendChild(option);
+            }
+        });
+    }
+
+    // --- Staff Assignment Logic (from old editor.js) ---
+    function populateStaffLists() {
+        // Clear lists first
+        clinicianSelect.innerHTML = '';
+        availableStaffList.innerHTML = '';
+        casemanagerList.innerHTML = '';
+        associateList.innerHTML = '';
+
+        const availableRoles = ['RN', 'EN'];
+
+        allStaff.forEach(staff => {
+            const option = document.createElement('option');
+            option.value = staff.ID;
+            option.textContent = `${staff.StaffName} (${staff.Role})`;
+
+            if (staff.Role === 'RC' || staff.Role === 'Responsible Clinician') {
+                clinicianSelect.appendChild(option.cloneNode(true));
+            }
+
+            const isCaseManager = (staff.ID === currentPerson.case_manager_id || staff.ID === currentPerson.case_manager_2nd_id);
+            const isAssociate = (staff.ID === currentPerson.associate_id || staff.ID === currentPerson.associate_2nd_id);
+            const isClinician = (staff.ID === currentPerson.clinician_id);
+
+            if (isCaseManager) {
+                casemanagerList.appendChild(option);
+            } else if (isAssociate) {
+                associateList.appendChild(option);
+            } else if (!isClinician && availableRoles.includes(staff.Role)) {
+                availableStaffList.appendChild(option);
+            }
+        });
+
+        clinicianSelect.value = currentPerson.clinician_id || '';
+    }
+
+    function moveSelectedOptions(source, dest, limit) {
+        const options = Array.from(source.selectedOptions);
+        if (limit && (dest.options.length + options.length > limit)) {
+            alert(`You can only assign a maximum of ${limit} people to this role.`);
+            return;
         }
-    });
+        options.forEach(option => dest.appendChild(option));
+    }
 
-    editPersonSelect.addEventListener('change', () => {
-        const selectedPersonId = editPersonSelect.value;
-        const person = allPeople.find(p => p.id == selectedPersonId);
-
-        if (person) {
-            editNhiInput.value = person.nhi || '';
-            editNameInput.value = person.name || '';
-            editLegalStatusSelect.value = person.legal_id || '';
-            editSpecialPatientCheckbox.checked = person.is_special_patient;
-            editVnrCheckbox.checked = person.has_vnr;
-            editSpecialNotesTextarea.value = person.special_notes || '';
-        } else {
-            // Clear the form if no one is selected
-            editNhiInput.value = '';
-            editNameInput.value = '';
-            editLegalStatusSelect.value = '';
-            editSpecialPatientCheckbox.checked = false;
-            editVnrCheckbox.checked = false;
-            editSpecialNotesTextarea.value = '';
-        }
-    });
-
+    // --- Validation ---
     async function validateNhi(nhi, currentId = null) {
         const nhiRegex = /^[A-Z]{3}[0-9]{4}$/;
         if (!nhiRegex.test(nhi)) {
             alert('Invalid NHI format. It must be 3 uppercase letters followed by 4 numbers (e.g., ABC1234).');
             return false;
         }
-
-        // Check if the NHI already exists for a *different* person
-        const existingPerson = allPeople.find(p => p.nhi === nhi);
-        if (existingPerson && existingPerson.id != currentId) {
-            alert('This NHI is already assigned to another person.');
-            return false;
+        const response = await fetch(`/api/nhi/check/${nhi}`);
+        const data = await response.json();
+        if (data.exists) {
+            const existingPerson = allPeople.find(p => p.nhi === nhi);
+            if (!currentId || existingPerson.id != currentId) {
+                alert('This NHI is already in use by another person.');
+                return false;
+            }
         }
-        
         return true;
     }
 
+    // --- Event Listeners ---
     assignSubmitBtn.addEventListener('click', async () => {
-        if (!await validateNhi(assignNhiInput.value.trim().toUpperCase())) return;
+        const nhi = assignNhiInput.value.trim().toUpperCase();
+        if (!await validateNhi(nhi)) return;
 
         const personData = {
             room: assignRoomSelect.value,
-            nhi: assignNhiInput.value.trim().toUpperCase(),
+            nhi: nhi,
             name: assignNameInput.value.trim(),
             legal_id: assignLegalStatusSelect.value,
             is_special_patient: assignSpecialPatientCheckbox.checked,
@@ -156,30 +203,27 @@ document.addEventListener('DOMContentLoaded', () => {
             special_notes: assignSpecialNotesTextarea.value.trim()
         };
 
-        try {
-            const response = await fetch('/api/people/assign', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(personData)
-            });
-            if (response.ok) {
-                alert('Person assigned successfully');
-                window.location.href = '/main-editor';
-            } else {
-                alert('Error assigning person');
-            }
-        } catch (error) {
-            console.error('Error assigning person:', error);
+        const response = await fetch('/api/people/assign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(personData)
+        });
+
+        if (response.ok) {
+            alert('Person assigned successfully');
+            window.location.href = '/main-editor';
+        } else {
+            alert('Error assigning person');
         }
     });
 
     editSubmitBtn.addEventListener('click', async () => {
-        const personId = editPersonSelect.value;
-        if (!await validateNhi(editNhiInput.value.trim().toUpperCase(), personId)) return;
-        
+        const nhi = editNhiInput.value.trim().toUpperCase();
+        if (!await validateNhi(nhi, personId)) return;
+
         const personData = {
             id: personId,
-            nhi: editNhiInput.value.trim().toUpperCase(),
+            nhi: nhi,
             name: editNameInput.value.trim(),
             legal_id: editLegalStatusSelect.value,
             is_special_patient: editSpecialPatientCheckbox.checked,
@@ -187,45 +231,72 @@ document.addEventListener('DOMContentLoaded', () => {
             special_notes: editSpecialNotesTextarea.value.trim()
         };
 
-        try {
-            const response = await fetch(`/api/people/edit`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(personData)
-            });
-            if (response.ok) {
-                alert('Person updated successfully');
-                window.location.href = '/main-editor';
-            } else {
-                alert('Error updating person');
-            }
-        } catch (error) {
-            console.error('Error updating person:', error);
+        const response = await fetch('/api/people/edit', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(personData)
+        });
+
+        if (response.ok) {
+            alert('Details updated successfully');
+            window.location.href = '/main-editor';
+        } else {
+            alert('Error updating details');
+        }
+    });
+    
+    saveAssignmentsBtn.addEventListener('click', async () => {
+        const cmIds = Array.from(casemanagerList.options).map(opt => Number(opt.value));
+        const assocIds = Array.from(associateList.options).map(opt => Number(opt.value));
+
+        const assignmentData = {
+            clinician_id: Number(clinicianSelect.value) || null,
+            case_manager_id: cmIds[0] || null,
+            case_manager_2nd_id: cmIds[1] || null,
+            associate_id: assocIds[0] || null,
+            associate_2nd_id: assocIds[1] || null
+        };
+
+        const response = await fetch(`/api/people/${personId}/assignments`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(assignmentData)
+        });
+
+        if (response.ok) {
+            alert('Assignments saved successfully!');
+            window.location.href = '/main-editor';
+        } else {
+            alert('Failed to save assignments.');
         }
     });
 
     moveSubmitBtn.addEventListener('click', async () => {
         const moveData = {
-            personId: movePersonSelect.value,
+            personId: personId,
             destinationRoom: moveRoomSelect.value
         };
 
-        try {
-            const response = await fetch('/api/people/move', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(moveData)
-            });
-            if (response.ok) {
-                alert('Person moved successfully');
-                window.location.href = '/main-editor';
-            } else {
-                alert('Error moving person');
-            }
-        } catch (error) {
-            console.error('Error moving person:', error);
+        const response = await fetch('/api/people/move', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(moveData)
+        });
+
+        if (response.ok) {
+            alert('Person moved successfully');
+            window.location.href = '/main-editor';
+        } else {
+            alert('Error moving person');
         }
     });
 
+    // Assignment button listeners
+    assignCmBtn.addEventListener('click', () => moveSelectedOptions(availableStaffList, casemanagerList, 2));
+    removeCmBtn.addEventListener('click', () => moveSelectedOptions(casemanagerList, availableStaffList, null));
+    assignAssocBtn.addEventListener('click', () => moveSelectedOptions(availableStaffList, associateList, 2));
+    removeAssocBtn.addEventListener('click', () => moveSelectedOptions(associateList, availableStaffList, null));
+
+    // --- Start the App ---
     initialize();
 });

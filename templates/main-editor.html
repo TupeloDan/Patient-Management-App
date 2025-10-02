@@ -16,10 +16,14 @@
 
     <div class="main-editor-layout">
         <div class="patient-list-column">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h2>Occupied Rooms</h2>
-                <a href="/management">Manage Patients</a>
+                
             </div>
+            <div>
+                    <a href="/management?action=assign">Assign New</a>
+                    <a id="manage-selected-link" href="#" class="hidden" style="margin-left: 10px;">Manage Selected</a>
+                </div>
             <div id="patient-list-container"></div>
         </div>
 

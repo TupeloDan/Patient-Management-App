@@ -9,19 +9,10 @@
 </head>
 <body>
     <header class="header-container">
-        <h1>Patient Management</h1>
+        <h1 id="management-header">Patient Management</h1>
     </header>
 
     <main class="editor-container">
-        <div class="form-group">
-            <label for="action-select">Select Action:</label>
-            <select id="action-select">
-                <option value="">Select an action...</option>
-                <option value="assign">Assign New Person</option>
-                <option value="edit">Edit Person</option>
-                <option value="move">Move Person</option>
-            </select>
-        </div>
 
         <div id="assign-form" class="hidden">
             <h2>Assign New Person</h2>
@@ -56,51 +47,79 @@
             </div>
         </div>
 
-        <div id="edit-form" class="hidden">
-            <h2>Edit Person</h2>
-            <div class="form-group">
-                <label for="edit-person-select">Select Person:</label>
-                <select id="edit-person-select"></select>
+        <div id="manage-forms" class="hidden">
+            
+            <div id="edit-form">
+                <h2>Edit Person Details</h2>
+                <div class="form-group">
+                    <label for="edit-nhi">NHI:</label>
+                    <input type="text" id="edit-nhi">
+                </div>
+                <div class="form-group">
+                    <label for="edit-name">Name:</label>
+                    <input type="text" id="edit-name">
+                </div>
+                <div class="form-group">
+                    <label for="edit-legal-status">Legal Status:</label>
+                    <select id="edit-legal-status"></select>
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="edit-special-patient"> Special Patient</label>
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="edit-vnr"> VNR</label>
+                </div>
+                <div class="form-group">
+                    <label for="edit-special-notes">Special Notes:</label>
+                    <textarea id="edit-special-notes" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <button id="edit-submit-btn">Save Detail Changes</button>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="edit-nhi">NHI:</label>
-                <input type="text" id="edit-nhi">
-            </div>
-            <div class="form-group">
-                <label for="edit-name">Name:</label>
-                <input type="text" id="edit-name">
-            </div>
-            <div class="form-group">
-                <label for="edit-legal-status">Legal Status:</label>
-                <select id="edit-legal-status"></select>
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" id="edit-special-patient"> Special Patient</label>
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" id="edit-vnr"> VNR</label>
-            </div>
-            <div class="form-group">
-                <label for="edit-special-notes">Special Notes:</label>
-                <textarea id="edit-special-notes" rows="3"></textarea>
-            </div>
-            <div class="form-group">
-                <button id="edit-submit-btn">Save Changes</button>
-            </div>
-        </div>
 
-        <div id="move-form" class="hidden">
-            <h2>Move Person</h2>
-            <div class="form-group">
-                <label for="move-person-select">Select Person to Move:</label>
-                <select id="move-person-select"></select>
+            <hr>
+
+            <div id="assignment-form">
+                <h2>Staff Assignments</h2>
+                <div class="form-group">
+                    <label for="clinician-select">Responsible Clinician:</label>
+                    <select id="clinician-select"></select>
+                </div>
+                <div class="assignment-columns">
+                    <div class="staff-list-container">
+                        <h3>Available Staff</h3>
+                        <select id="available-staff-list" multiple></select>
+                    </div>
+                    <div class="assignment-buttons">
+                        <button id="assign-cm">&gt;&gt; Assign Case Manager</button>
+                        <button id="remove-cm">&lt;&lt; Remove Case Manager</button>
+                        <button id="assign-assoc">&gt;&gt; Assign Associate</button>
+                        <button id="remove-assoc">&lt;&lt; Remove Associate</button>
+                    </div>
+                    <div class="staff-list-container">
+                        <h3>Case Managers</h3>
+                        <select id="casemanager-list" multiple></select>
+                        <h3>Associates</h3>
+                        <select id="associate-list" multiple></select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button id="save-assignments-btn">Save Assignment Changes</button>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="move-room-select">Select Destination Room:</label>
-                <select id="move-room-select"></select>
-            </div>
-            <div class="form-group">
-                <button id="move-submit-btn">Move Person</button>
+
+            <hr>
+
+            <div id="move-form">
+                <h2>Move Person</h2>
+                <div class="form-group">
+                    <label for="move-room-select">Select Destination Room:</label>
+                    <select id="move-room-select"></select>
+                </div>
+                <div class="form-group">
+                    <button id="move-submit-btn">Move Person</button>
+                </div>
             </div>
         </div>
     </main>

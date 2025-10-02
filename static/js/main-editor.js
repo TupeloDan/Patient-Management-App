@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const patientListContainer = document.getElementById('patient-list-container');
     const detailsPane = document.getElementById('details-pane');
     const detailsHeader = document.getElementById('details-header');
+    const manageSelectedLink = document.getElementById('manage-selected-link');
     const addLeaveModal = document.getElementById('add-leave-modal');
     const addLeaveTitle = document.getElementById('add-leave-title');
     const escortedChecklistContainer = document.getElementById('escorted-checklist-container');
@@ -70,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     handlePatientSelection(selectedIdToPreserve);
                 } else {
                     detailsPane.classList.add('hidden');
+                    manageSelectedLink.classList.add('hidden');
                 }
             }
         } catch (error) { console.error("Error refreshing data:", error); }
@@ -166,23 +168,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handlePatientSelection(patientId) {
         selectedPatient = allPatients.find(p => p.id === patientId);
-        if (!selectedPatient) {
-            detailsPane.classList.add('hidden');
-            return;
-        }
+        
         document.querySelectorAll('.patient-list-item').forEach(item => {
             item.classList.toggle('selected', item.dataset.patientId == patientId);
         });
-        detailsPane.classList.remove('hidden');
-        detailsHeader.textContent = `Currently Managing: ${selectedPatient.name}`;
-        detailsPane.classList.toggle('is-special', selectedPatient.is_special_patient);
-        populateDetailsPane();
-        populateLeaveLists();
+
+        if (selectedPatient) {
+            detailsPane.classList.remove('hidden');
+            detailsHeader.textContent = `Currently Managing: ${selectedPatient.name}`;
+            detailsPane.classList.toggle('is-special', selectedPatient.is_special_patient);
+            
+            manageSelectedLink.classList.remove('hidden');
+            manageSelectedLink.href = `/management?action=manage&id=${selectedPatient.id}`;
+
+            populateDetailsPane();
+            populateLeaveLists();
+        } else {
+            detailsPane.classList.add('hidden');
+            manageSelectedLink.classList.add('hidden');
+        }
     }
     
     function handleLeaveSelection(leaveObject, leaveElement) {
         selectedLeave = leaveObject;
-        console.log("Selected Leave:", selectedLeave);
         document.querySelectorAll('.leave-item').forEach(item => item.classList.remove('selected'));
         leaveElement.classList.add('selected');
     }
@@ -267,9 +275,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function validateLeaveForm() {
         const errors = [];
         if (!staffResponsibleChoice.getValue(true)) errors.push("Staff Responsible must be selected.");
-        // --- THIS IS THE FIX ---
-        // The check for staffMseChoice is removed, making it optional.
-        // --- END FIX ---
         if (!shiftLeadChoice.getValue(true)) errors.push("Shift Lead Notified must be selected.");
         if (clothingDescInput.value.trim().length === 0) errors.push("Description of Clothing cannot be empty.");
         const durationSelection = addLeaveModal.querySelector('input[name="duration"]:checked').value;
@@ -322,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- EVENT LISTENERS ---
+    // --- EVENT LISTENERS (Restored) ---
     modalCancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
     modalTodayBtn.addEventListener('click', () => datePicker.setDate(new Date(), true));
     modalSaveBtn.addEventListener('click', async () => {
@@ -353,6 +358,33 @@ document.addEventListener('DOMContentLoaded', () => {
     lastHonosDate.addEventListener('click', () => openDatePicker('honos', 'Change Last HoNos Date'));
     lastUdsDate.addEventListener('click', () => openDatePicker('uds', 'Change Last UDS Date'));
     
+    for (const taskName in taskToggles) {
+        taskToggles[taskName].addEventListener('click', async () => {
+            if (!selectedPatient) return;
+            const patientId = selectedPatient.id;
+            await updateField(taskName, !selectedPatient[taskName]);
+            await refreshAllData(patientId);
+        });
+    }
+
+    udsFrequencySelect.addEventListener('change', async (event) => {
+        if (!selectedPatient) return;
+        const patientId = selectedPatient.id;
+        await updateField('uds_frequency', event.target.value);
+        const lastUds = selectedPatient.last_uds ? new Date(selectedPatient.last_uds).toLocaleDateString('en-NZ') : new Date().toLocaleDateString('en-NZ');
+        try {
+            await fetch(`/api/people/${patientId}/update-uds-date`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ last_test_date: lastUds }) });
+            await refreshAllData(patientId);
+        } catch (error) { console.error('Error recalculating UDS date:', error); }
+    });
+
+    mdtDaySelect.addEventListener('change', async (event) => {
+        if (!selectedPatient) return;
+        const patientId = selectedPatient.id;
+        await updateField('mdt_day', event.target.value);
+        await refreshAllData(patientId);
+    });
+
     document.getElementById('add-leave-btn').addEventListener('click', async () => {
         if (!selectedPatient) {
             alert("Please select a patient first.");
@@ -378,6 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Please select a leave event from one of the lists first.');
             return;
         }
+        // This assumes FileName is correctly populated in the leave object
         if (selectedLeave.FileName) {
             const reportUrl = `/reports/${selectedLeave.FileName.replace(/\\/g, '/')}`;
             window.open(reportUrl, '_blank');
@@ -412,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (phoneSelection === 'own') {
             contactPhoneNumber = ownPhoneNumber;
         } else if (phoneSelection === 'knows_contact') {
-            contactPhoneNumber = '0';
+            contactPhoneNumber = '0'; // Special value for knows contact
         } else {
             const labelText = phoneRadio.closest('label').textContent;
             const match = labelText.match(/(\d{3}[\s-]?\d{3}[\s-]?\d{3,4}|\d{10,11})/);
@@ -490,33 +523,6 @@ document.addEventListener('DOMContentLoaded', () => {
             returnModalConfirmBtn.disabled = false;
             returnModalConfirmBtn.textContent = "Confirm Return";
         }
-    });
-
-    for (const taskName in taskToggles) {
-        taskToggles[taskName].addEventListener('click', async () => {
-            if (!selectedPatient) return;
-            const patientId = selectedPatient.id;
-            await updateField(taskName, !selectedPatient[taskName]);
-            await refreshAllData(patientId);
-        });
-    }
-
-    udsFrequencySelect.addEventListener('change', async (event) => {
-        if (!selectedPatient) return;
-        const patientId = selectedPatient.id;
-        await updateField('uds_frequency', event.target.value);
-        const lastUds = selectedPatient.last_uds ? new Date(selectedPatient.last_uds).toLocaleDateString('en-NZ') : new Date().toLocaleDateString('en-NZ');
-        try {
-            await fetch(`/api/people/${patientId}/update-uds-date`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ last_test_date: lastUds }) });
-            await refreshAllData(patientId);
-        } catch (error) { console.error('Error recalculating UDS date:', error); }
-    });
-
-    mdtDaySelect.addEventListener('change', async (event) => {
-        if (!selectedPatient) return;
-        const patientId = selectedPatient.id;
-        await updateField('mdt_day', event.target.value);
-        await refreshAllData(patientId);
     });
 
     // --- INITIALIZE ---
