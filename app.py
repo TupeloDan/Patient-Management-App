@@ -104,7 +104,6 @@ def get_delegated_staff():
     staff = staff_manager.get_delegated_staff()
     return jsonify(staff)
 
-# THIS ROUTE IS NOW RESTORED
 @app.route("/api/ui-text", methods=["GET"])
 def get_ui_text():
     context = request.args.get('context')
@@ -226,6 +225,14 @@ def move_person():
         return jsonify({"message": "Person moved successfully"}), 200
     else:
         return jsonify({"error": "Failed to move person"}), 500
+
+@app.route("/api/people/remove/<int:person_id>", methods=["DELETE"])
+def remove_person_from_room(person_id):
+    success = person_manager.remove_person(person_id)
+    if success:
+        return jsonify({"message": "Person removed successfully"}), 200
+    else:
+        return jsonify({"error": "Failed to remove person"}), 500
 
 @app.route("/api/leaves", methods=["POST"])
 def add_leave():
