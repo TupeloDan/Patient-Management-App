@@ -67,10 +67,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         const entryDiv = document.createElement('div');
                         entryDiv.classList.add('leave-entry');
                         const infoLine = document.createElement('p');
-                        infoLine.innerHTML = `<strong>${leave.personName || ''}</strong> (${leave.leaveType || ''}) Staff: ${leave.staffName || ''} Contact: ${leave.contactPhone || ''}`;
+
+                        const leaveTime = leave.leaveTime ? new Date(leave.leaveTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+                        
+                        // THIS IS THE FIX: The first <br> is replaced with a separator.
+                        infoLine.innerHTML = `<strong>${leave.personName || ''}</strong> (${leave.leaveType || ''}) | Left at: ${leaveTime} for ${leave.duration || '?'} mins
+                                            <strong>Staff Responsible:</strong> ${leave.staffName || ''} | Contact: ${leave.contactPhone || ''}`;
+
                         const descLine = document.createElement('p');
                         descLine.classList.add('leave-description');
                         descLine.textContent = `Description: ${leave.description || ''}`;
+
                         entryDiv.appendChild(infoLine);
                         entryDiv.appendChild(descLine);
                         onLeaveListDiv.appendChild(entryDiv);
@@ -85,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function refreshWhiteboard() {
         try {
-            const response = await fetch('/data'); // Changed to use the /data endpoint
+            const response = await fetch('/data');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
 
@@ -112,7 +119,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 }
 
-                // --- CORRECTED to use user-friendly names from the view ---
                 row.innerHTML = `
                 <td>${person.room || ''}</td>
                 <td>${person.nhi || ''}</td>
@@ -135,7 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 whiteboardBody.appendChild(row);
 
-                // --- Conditional Formatting (no changes needed here, but kept for context) ---
                 if (person.is_special_patient) {
                     row.cells[2].classList.add('font-alert-red');
                     row.cells[3].classList.add('font-alert-red');

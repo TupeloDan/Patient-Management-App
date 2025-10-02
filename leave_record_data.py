@@ -1,4 +1,4 @@
-# tupelodan/patient-management-app/Patient-Management-App-f198c0084c603f3bf132839d0b246869c9b9f5a1/leave_record_data.py
+# leave_record_data.py
 from datetime import datetime
 from database import get_db_connection
 from leave_record_model import LeaveRecord
@@ -68,9 +68,23 @@ class LeaveRecordData:
         on_leave_list = []
         try:
             cursor = conn.cursor(dictionary=True)
-            cursor.callproc("sp_GetPeopleOnLeave")
-            for result in cursor.stored_results():
-                on_leave_list = result.fetchall()
+            sql = """
+                SELECT
+                    p.PersonName AS personName,
+                    l.LeaveType AS leaveType,
+                    l.LeaveTime AS leaveTime,
+                    l.DurationMinutes AS duration,
+                    s.StaffName AS staffName,
+                    l.ContactPhoneNumber AS contactPhone,
+                    l.LeaveDescription AS description
+                FROM LeaveLog l
+                JOIN People p ON l.NHI = p.NHI
+                LEFT JOIN Staff s ON l.StaffResponsibleID = s.ID
+                WHERE l.ReturnTime IS NULL
+                ORDER BY l.LeaveTime;
+            """
+            cursor.execute(sql)
+            on_leave_list = cursor.fetchall()
         except Exception as e:
             print(f"Database Error in get_people_on_leave: {e}")
         finally:
@@ -85,9 +99,6 @@ class LeaveRecordData:
         if not conn: return False
         try:
             cursor = conn.cursor()
-            
-            # FIX #1: This tuple now correctly sends all 20 arguments
-            # to match what your database is expecting.
             args = (
                 new_leave.nhi,
                 new_leave.patient_name,
@@ -108,12 +119,11 @@ class LeaveRecordData:
                 new_leave.has_ward_contact_info,
                 new_leave.senior_nurse_id,
                 new_leave.contact_phone_number,
-                0,  # Placeholder for the OUT parameter p_new_id
+                0,
             )
             
             cursor.callproc("sp_AddLeave", args)
             
-            # FIX #2: This reliably gets the correct ID of the record we just inserted.
             cursor.execute("SELECT LAST_INSERT_ID()")
             last_id_row = cursor.fetchone()
             if not last_id_row or not last_id_row[0]:

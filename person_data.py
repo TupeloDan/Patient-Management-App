@@ -127,30 +127,6 @@ class PersonData:
         
         return person
 
-    def get_person_by_room(self, room_name: str) -> Person | None:
-        """Finds a room's basic details (ID, NHI) from the base People table."""
-        conn = get_db_connection()
-        if not conn:
-            return None
-
-        query = "SELECT ID, Room, NHI FROM People WHERE Room = %s"
-        person_stub = None
-        try:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute(query, (room_name,))
-            row = cursor.fetchone()
-            if row:
-                person_stub = Person(
-                    id=row.get("ID"), room=row.get("Room"), nhi=row.get("NHI")
-                )
-        except Exception as e:
-            print(f"An error occurred in get_person_by_room: {e}")
-        finally:
-            if conn and conn.is_connected():
-                cursor.close()
-                conn.close()
-        return person_stub
-
     def update_person(self, person: Person) -> bool:
         """Updates an existing person's record by calling the sp_UpdatePerson stored procedure."""
         conn = get_db_connection()
@@ -183,56 +159,17 @@ class PersonData:
                 conn.close()
 
     def move_person(self, person_to_move: Person, destination_room_name: str) -> bool:
-        """Moves a person to a new room by calling the sp_MovePerson stored procedure."""
+        """Moves a person to a new room by updating existing records via the sp_MovePerson stored procedure."""
         conn = get_db_connection()
         if not conn:
             return False
 
         try:
             cursor = conn.cursor()
-            # THIS IS THE FIX: The three missing date fields have been added to the args tuple
-            args = (
-                person_to_move.id,
-                person_to_move.nhi,
-                person_to_move.name,
-                person_to_move.legal_id,
-                person_to_move.has_vnr,
-                person_to_move.treatment_plans_due,
-                person_to_move.honos_due,
-                person_to_move.uds_due,
-                person_to_move.rel_security,
-                person_to_move.profile,
-                person_to_move.metobolic,
-                person_to_move.bloods,
-                person_to_move.flight_risk,
-                person_to_move.uds_frequency,
-                person_to_move.mdt_day,
-                person_to_move.clinician_id,
-                person_to_move.case_manager_id,
-                person_to_move.case_manager_2nd_id,
-                person_to_move.associate_id,
-                person_to_move.associate_2nd_id,
-                person_to_move.progress_percent,
-                person_to_move.special_notes,
-                person_to_move.is_special_patient,
-                person_to_move.last_treatment_plan, # <-- Added
-                person_to_move.last_honos,           # <-- Added
-                person_to_move.last_uds,             # <-- Added
-                destination_room_name,
-                0, 
-            )
-
-            result_args = cursor.callproc("sp_MovePerson", args)
-            new_id = result_args[27] 
-
+            args = (person_to_move.id, destination_room_name)
+            cursor.callproc("sp_MovePerson", args)
             conn.commit()
             print(f"Successfully moved {person_to_move.name} to {destination_room_name}.")
-
-            self._people_cache[person_to_move.id].nhi = None
-            person_to_move.id = new_id
-            person_to_move.room = destination_room_name
-            self._people_cache[new_id] = person_to_move
-
             return True
 
         except Exception as e:
@@ -244,13 +181,14 @@ class PersonData:
                 conn.close()
 
     def assign_person_to_room(self, new_person_details: Person, destination_room_name: str) -> bool:
-        """Assigns a new person to a specified empty room by calling the sp_AssignPersonToRoom stored procedure."""
+        """Assigns a new person's data to a specified empty room record."""
         conn = get_db_connection()
         if not conn:
             return False
 
         try:
             cursor = conn.cursor()
+            # THIS IS THE FIX: This now sends the correct 8 arguments in the right order.
             args = (
                 new_person_details.nhi,
                 new_person_details.name,
@@ -259,19 +197,11 @@ class PersonData:
                 new_person_details.is_special_patient,
                 new_person_details.special_notes,
                 destination_room_name,
-                0,
+                0,  # Placeholder for the OUT parameter
             )
-
-            result_args = cursor.callproc("sp_AssignPersonToRoom", args)
-            new_id = result_args[7] 
-
+            cursor.callproc("sp_AssignPersonToRoom", args)
             conn.commit()
             print(f"Successfully assigned {new_person_details.name} to room {destination_room_name}.")
-
-            new_person_details.id = new_id
-            new_person_details.room = destination_room_name
-            self._people_cache[new_id] = new_person_details
-
             return True
 
         except Exception as e:
@@ -292,14 +222,8 @@ class PersonData:
             cursor = conn.cursor()
             args = (person_id,)
             cursor.callproc("sp_RemovePerson", args)
-
             conn.commit()
             print(f"Successfully removed person from record ID: {person_id}")
-
-            if person_id in self._people_cache:
-                self._people_cache[person_id].nhi = None
-                self._people_cache[person_id].name = None
-
             return True
 
         except Exception as e:
@@ -311,28 +235,16 @@ class PersonData:
                 conn.close()
 
     def update_staff_assignments(self, person_id: int, clinician_id: int, cm_id: int, cm_2nd_id: int, assoc_id: int, assoc_2nd_id: int) -> bool:
-        """Updates staff assignments for a person by calling the sp_UpdateStaffAssignments stored procedure."""
+        """Updates staff assignments for a person."""
         conn = get_db_connection()
         if not conn:
             return False
-
         try:
             cursor = conn.cursor()
             args = (person_id, clinician_id, cm_id, cm_2nd_id, assoc_id, assoc_2nd_id)
             cursor.callproc("sp_UpdateStaffAssignments", args)
             conn.commit()
-            print(f"Successfully updated staff assignments for person ID: {person_id}")
-
-            if person_id in self._people_cache:
-                person = self._people_cache[person_id]
-                person.clinician_id = clinician_id
-                person.case_manager_id = cm_id
-                person.case_manager_2nd_id = cm_2nd_id
-                person.associate_id = assoc_id
-                person.associate_2nd_id = assoc_2nd_id
-
             return True
-
         except Exception as e:
             print(f"Error updating staff assignments: {e}")
             return False
@@ -344,122 +256,42 @@ class PersonData:
     def update_field(self, person_id: int, field_name: str, new_value) -> bool:
         """Updates a single field for a person in the database."""
         if field_name not in self.VALID_UPDATE_FIELDS:
-            print(f"Error: '{field_name}' is not a valid field for updating.")
             return False
-
         db_column_name = self.VALID_UPDATE_FIELDS[field_name]
         sql = f"UPDATE People SET `{db_column_name}` = %s WHERE ID = %s"
-        values = (new_value, person_id)
-
-        conn = get_db_connection()
-        if not conn:
-            return False
-
-        try:
-            cursor = conn.cursor()
-            conn.start_transaction()
-            cursor.execute(sql, values)
-
-            if cursor.rowcount == 0:
-                raise Exception(f"Update failed because no record with ID {person_id} was found.")
-
-            conn.commit()
-            print(f"Successfully updated '{db_column_name}' for person ID: {person_id}")
-
-            if person_id in self._people_cache:
-                person = self._people_cache[person_id]
-                setattr(person, field_name, new_value)
-
-            return True
-
-        except Exception as e:
-            print(f"Error updating field '{db_column_name}': {e}")
-            conn.rollback()
-            return False
-        finally:
-            if conn and conn.is_connected():
-                cursor.close()
-                conn.close()
+        return self._execute_update(sql, (new_value, person_id))
 
     def update_plan_due_date(self, person_id: int, completed_date: date) -> bool:
-        """Calculates a new Plan Due date (3 months) and updates the database."""
-        try:
-            new_due_date = completed_date + relativedelta(months=3)
-            sql = "UPDATE People SET TreatmentPlans = %s, LastTreatmentPlan = %s WHERE ID = %s"
-            values = (new_due_date.strftime('%Y-%m-%d'), completed_date.strftime('%Y-%m-%d'), person_id)
-            self._execute_transactional_update(sql, values)
-
-            if person_id in self._people_cache:
-                self._people_cache[person_id].treatment_plans_due = new_due_date
-                self._people_cache[person_id].last_treatment_plan = completed_date
-
-            print(f"Successfully updated Plan Due Date for person ID: {person_id}")
-            return True
-        except Exception as e:
-            print(f"Error updating Plan Due Date: {e}")
-            return False
+        """Calculates and updates the next treatment plan due date."""
+        new_due_date = completed_date + relativedelta(months=3)
+        sql = "UPDATE People SET TreatmentPlans = %s, LastTreatmentPlan = %s WHERE ID = %s"
+        return self._execute_update(sql, (new_due_date, completed_date, person_id))
 
     def update_honos_due_date(self, person_id: int, completed_date: date) -> bool:
-        """Calculates a new HoNos Due date (3 months) and updates the database."""
-        try:
-            new_due_date = completed_date + relativedelta(months=3)
-            sql = "UPDATE People SET HoNos = %s, LastHonos = %s WHERE ID = %s"
-            values = (new_due_date.strftime('%Y-%m-%d'), completed_date.strftime('%Y-%m-%d'), person_id)
-            self._execute_transactional_update(sql, values)
-
-            if person_id in self._people_cache:
-                self._people_cache[person_id].honos_due = new_due_date
-                self._people_cache[person_id].last_honos = completed_date
-
-            print(f"Successfully updated HoNos Due Date for person ID: {person_id}")
-            return True
-        except Exception as e:
-            print(f"Error updating HoNos Due Date: {e}")
-            return False
+        """Calculates and updates the next HoNos due date."""
+        new_due_date = completed_date + relativedelta(months=3)
+        sql = "UPDATE People SET HoNos = %s, LastHonos = %s WHERE ID = %s"
+        return self._execute_update(sql, (new_due_date, completed_date, person_id))
 
     def update_uds_due_date(self, person_id: int, last_test_date: date) -> bool:
-        """Calculates a new UDS Due date based on frequency and updates the database."""
+        """Calculates and updates the next UDS due date based on frequency."""
         person = self.get_person_by_id(person_id)
-        if not person:
-            print(f"Error: Could not find person with ID {person_id} in cache.")
-            return False
+        if not person: return False
+        
+        frequency = (person.uds_frequency or "WEEKLY").upper()
+        if frequency == "BI-WEEKLY": new_due_date = last_test_date + timedelta(days=14)
+        elif frequency == "WEEKLY": new_due_date = last_test_date + timedelta(weeks=1)
+        elif frequency == "MONTHLY": new_due_date = last_test_date + relativedelta(months=1)
+        elif frequency == "RANDOM": new_due_date = date.today() + timedelta(days=random.randint(7, 28))
+        else: new_due_date = date.today()
 
-        try:
-            frequency = (person.uds_frequency.upper() if person.uds_frequency else "WEEKLY")
-            if frequency == "BI-WEEKLY":
-                new_due_date = last_test_date + timedelta(days=14)
-            elif frequency == "WEEKLY":
-                new_due_date = last_test_date + timedelta(weeks=1)
-            elif frequency == "MONTHLY":
-                new_due_date = last_test_date + relativedelta(months=1)
-            elif frequency == "RANDOM":
-                new_due_date = date.today() + timedelta(days=random.randint(7, 28))
-            elif frequency == "ONREQUEST":
-                new_due_date = date.today()
-            else:
-                new_due_date = last_test_date
-
-            sql = "UPDATE People SET UDSDue = %s, LastUDS = %s WHERE ID = %s"
-            values = (new_due_date.strftime('%Y-%m-%d'), last_test_date.strftime('%Y-%m-%d'), person_id)
-
-            self._execute_transactional_update(sql, values)
-
-            if person_id in self._people_cache:
-                self._people_cache[person_id].uds_due = new_due_date
-                self._people_cache[person_id].last_uds = last_test_date
-
-            print(f"Successfully updated UDS Due Date for person ID: {person_id}")
-            return True
-        except Exception as e:
-            print(f"Error updating UDS Due Date: {e}")
-            return False
+        sql = "UPDATE People SET UDSDue = %s, LastUDS = %s WHERE ID = %s"
+        return self._execute_update(sql, (new_due_date, last_test_date, person_id))
         
     def get_person_by_nhi(self, nhi: str) -> Person | None:
         """Retrieves a single person from the database by their NHI number."""
         conn = get_db_connection()
-        if not conn:
-            return None
-
+        if not conn: return None
         person = None
         try:
             cursor = conn.cursor(dictionary=True)
@@ -473,30 +305,21 @@ class PersonData:
             if conn and conn.is_connected():
                 cursor.close()
                 conn.close()
-        
         return person
 
-    def _execute_transactional_update(self, sql: str, values: tuple):
-        """A private helper to run any transactional update."""
+    def _execute_update(self, sql: str, values: tuple) -> bool:
+        """A private helper to run simple update queries."""
         conn = get_db_connection()
-        if not conn:
-            raise Exception("Could not connect to the database.")
+        if not conn: return False
         try:
-            cursor = conn.cursor()
-            conn.start_transaction()
-            person_id_to_check = values[-1]
-            cursor.execute("SELECT ID FROM People WHERE ID = %s", (person_id_to_check,))
-            
-            if cursor.fetchone() is None:
-                raise Exception(f"Update failed because no record was found for ID: {person_id_to_check}")
-
-            cursor.execute(sql, values)
-            
+            with conn.cursor() as cursor:
+                cursor.execute(sql, values)
             conn.commit()
+            return True
         except Exception as e:
+            print(f"Error during DB update: {e}")
             conn.rollback()
-            raise e
+            return False
         finally:
             if conn and conn.is_connected():
-                cursor.close()
                 conn.close()
