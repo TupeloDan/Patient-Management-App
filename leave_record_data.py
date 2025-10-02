@@ -1,4 +1,4 @@
-# tupelodan/patient-management-app/Patient-Management-App-11280d08229d043412bbfeabe6ca9e8da6cbe246/leave_record_data.py
+# tupelodan/patient-management-app/Patient-Management-App-f198c0084c603f3bf132839d0b246869c9b9f5a1/leave_record_data.py
 from datetime import datetime
 from database import get_db_connection
 from leave_record_model import LeaveRecord
@@ -80,11 +80,14 @@ class LeaveRecordData:
         return on_leave_list
 
     def add_leave(self, new_leave: LeaveRecord) -> bool:
-        """Adds a new leave record to the database."""
+        """Adds a new leave record and reliably retrieves the new ID."""
         conn = get_db_connection()
         if not conn: return False
         try:
             cursor = conn.cursor()
+            
+            # FIX #1: This tuple now correctly sends all 20 arguments
+            # to match what your database is expecting.
             args = (
                 new_leave.nhi,
                 new_leave.patient_name,
@@ -107,13 +110,20 @@ class LeaveRecordData:
                 new_leave.contact_phone_number,
                 0,  # Placeholder for the OUT parameter p_new_id
             )
-            result_args = cursor.callproc("sp_AddLeave", args)
+            
+            cursor.callproc("sp_AddLeave", args)
+            
+            # FIX #2: This reliably gets the correct ID of the record we just inserted.
+            cursor.execute("SELECT LAST_INSERT_ID()")
+            last_id_row = cursor.fetchone()
+            if not last_id_row or not last_id_row[0]:
+                raise Exception("Could not retrieve LAST_INSERT_ID() from the database.")
+            
+            new_leave.id = last_id_row[0]
+            
             conn.commit()
             
-            # The 19th item is at index 18.
-            new_leave.id = result_args[18]
-
-            print(f"Successfully added new leave record for {new_leave.patient_name}")
+            print(f"Successfully added new leave record for {new_leave.patient_name} with ID: {new_leave.id}")
             return True
         except Exception as e:
             print(f"Error adding leave record: {e}")
