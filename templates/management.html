@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
+</head>
+<body>
+    <header class="header-container">
+        <h1>Patient Management</h1>
+    </header>
+
+    <main class="editor-container">
+        <div class="form-group">
+            <label for="action-select">Select Action:</label>
+            <select id="action-select">
+                <option value="">Select an action...</option>
+                <option value="assign">Assign New Person</option>
+                <option value="edit">Edit Person</option>
+                <option value="move">Move Person</option>
+            </select>
+        </div>
+
+        <div id="assign-form" class="hidden">
+            <h2>Assign New Person</h2>
+            <div class="form-group">
+                <label for="assign-room-select">Room:</label>
+                <select id="assign-room-select"></select>
+            </div>
+            <div class="form-group">
+                <label for="assign-nhi">NHI:</label>
+                <input type="text" id="assign-nhi">
+            </div>
+            <div class="form-group">
+                <label for="assign-name">Name:</label>
+                <input type="text" id="assign-name">
+            </div>
+            <div class="form-group">
+                <label for="assign-legal-status">Legal Status:</label>
+                <select id="assign-legal-status"></select>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="assign-special-patient"> Special Patient</label>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="assign-vnr"> VNR</label>
+            </div>
+            <div class="form-group">
+                <label for="assign-special-notes">Special Notes:</label>
+                <textarea id="assign-special-notes" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <button id="assign-submit-btn">Assign Person</button>
+            </div>
+        </div>
+
+        <div id="edit-form" class="hidden">
+            <h2>Edit Person</h2>
+            <div class="form-group">
+                <label for="edit-person-select">Select Person:</label>
+                <select id="edit-person-select"></select>
+            </div>
+            <div class="form-group">
+                <label for="edit-nhi">NHI:</label>
+                <input type="text" id="edit-nhi">
+            </div>
+            <div class="form-group">
+                <label for="edit-name">Name:</label>
+                <input type="text" id="edit-name">
+            </div>
+            <div class="form-group">
+                <label for="edit-legal-status">Legal Status:</label>
+                <select id="edit-legal-status"></select>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="edit-special-patient"> Special Patient</label>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="edit-vnr"> VNR</label>
+            </div>
+            <div class="form-group">
+                <label for="edit-special-notes">Special Notes:</label>
+                <textarea id="edit-special-notes" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <button id="edit-submit-btn">Save Changes</button>
+            </div>
+        </div>
+
+        <div id="move-form" class="hidden">
+            <h2>Move Person</h2>
+            <div class="form-group">
+                <label for="move-person-select">Select Person to Move:</label>
+                <select id="move-person-select"></select>
+            </div>
+            <div class="form-group">
+                <label for="move-room-select">Select Destination Room:</label>
+                <select id="move-room-select"></select>
+            </div>
+            <div class="form-group">
+                <button id="move-submit-btn">Move Person</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/management.js') }}"></script>
+</body>
+</html>
