@@ -5,16 +5,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const NOTICES_API = '/api/notices';
     const ONLEAVE_API = '/api/onleave';
 
-    // --- HELPER FUNCTION: This is the definitive parser for your time format ---
+    // --- HELPER FUNCTION ---
     const parseTimeValue = (timeValue) => {
         if (!timeValue) return null;
         const timeString = timeValue.toString();
-        // Handles ISO 8601 format from the database which is the most reliable
         if (timeString.includes('T') || timeString.includes(':')) {
             const date = new Date(timeString);
             return !isNaN(date.getTime()) ? date : null;
         }
-        // Fallback for "HHmm" format
         else if (timeString.length >= 4) {
             const hours = parseInt(timeString.substring(0, 2), 10);
             const minutes = parseInt(timeString.substring(2, 4), 10);
@@ -68,11 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         entryDiv.classList.add('leave-entry');
                         const infoLine = document.createElement('p');
 
-                        const leaveTime = leave.leaveTime ? new Date(leave.leaveTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+                        // THIS IS THE FIX: We no longer do any date parsing.
+                        const leaveTime = leave.leaveTime || 'N/A';
                         
-                        // THIS IS THE FIX: The first <br> is replaced with a separator.
-                        infoLine.innerHTML = `<strong>${leave.personName || ''}</strong> (${leave.leaveType || ''}) | Left at: ${leaveTime} for ${leave.duration || '?'} mins
-                                            <strong>Staff Responsible:</strong> ${leave.staffName || ''} | Contact: ${leave.contactPhone || ''}`;
+                        infoLine.innerHTML = `<strong>${leave.personName || ''}</strong> (${leave.leaveType || ''}) | Left at: ${leaveTime} for ${leave.duration || '?'} mins<br>
+                                            Staff: ${leave.staffName || ''} | Contact: ${leave.contactPhone || ''}`;
 
                         const descLine = document.createElement('p');
                         descLine.classList.add('leave-description');

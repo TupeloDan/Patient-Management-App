@@ -1,4 +1,3 @@
-# leave_record_data.py
 from datetime import datetime
 from database import get_db_connection
 from leave_record_model import LeaveRecord
@@ -68,11 +67,12 @@ class LeaveRecordData:
         on_leave_list = []
         try:
             cursor = conn.cursor(dictionary=True)
+            # THIS IS THE FIX: The database now handles all time formatting.
             sql = """
                 SELECT
                     p.PersonName AS personName,
                     l.LeaveType AS leaveType,
-                    l.LeaveTime AS leaveTime,
+                    DATE_FORMAT(l.LeaveTime, '%l:%i %p') AS leaveTime,
                     l.DurationMinutes AS duration,
                     s.StaffName AS staffName,
                     l.ContactPhoneNumber AS contactPhone,
