@@ -53,9 +53,9 @@ def main_editor():
 def management():
     return render_template('management.html')
 
-@app.route('/text-editor')
-def text_editor():
-    return render_template('text-editor.html')
+@app.route('/admin')
+def admin():
+    return render_template('admin.html')
 
 @app.route('/reports/<path:filename>')
 def serve_report(filename):
@@ -79,7 +79,8 @@ def get_active_notices():
 @app.route('/api/onleave')
 def get_on_leave_data():
     on_leave_list = leave_manager.get_people_on_leave()
-    return jsonify(on_leave_list)
+    response_json = json.dumps(on_leave_list, default=json_serial)
+    return app.response_class(response=response_json, status=200, mimetype='application/json')
 
 @app.route("/api/people", methods=["GET"])
 def get_people():
@@ -115,13 +116,7 @@ def get_ui_text():
         return jsonify({"error": "A 'context' parameter is required."}), 400
     
     text_elements = ui_text_manager.get_ui_text_by_context(context)
-    
-    # DEBUGGING LINE ADDED HERE
-    print(f"--- Fetching UI Text for context '{context}': Found {len(text_elements)} items. ---")
-    
     return jsonify(text_elements)
-
-# ... (all other routes remain the same)
 
 @app.route("/api/people/<int:person_id>/leaves", methods=["GET"])
 def get_person_leaves(person_id):
@@ -142,6 +137,21 @@ def get_person_leaves(person_id):
         record['ReturnTime_formatted'] = return_time_obj.strftime('%I:%M %p') if return_time_obj else 'N/A'
             
     return jsonify(leave_records)
+
+@app.route("/api/people/<int:person_id>/last-leave-description", methods=["GET"])
+def get_last_leave_description(person_id):
+    person = person_manager.get_person_by_id(person_id)
+    if not person or not person.nhi:
+        return jsonify({"error": "Person not found"}), 404
+    leave_records = leave_manager.get_leave_for_person(person.nhi)
+    last_description = ""
+    if leave_records:
+        sorted_leaves = sorted(leave_records, key=lambda x: x['ID'], reverse=True)
+        for leave in sorted_leaves:
+            if leave.get('LeaveDescription'):
+                last_description = leave['LeaveDescription']
+                break
+    return jsonify({"last_description": last_description})
 
 @app.route("/api/people/<int:person_id>/assignments", methods=["PUT"])
 def update_assignments(person_id):
@@ -261,9 +271,11 @@ def add_leave():
             return jsonify({"error": "Patient not found."}), 404
         
         duration = int(data.get('duration_minutes', 0))
+        
+        now = datetime.now()
         new_leave = LeaveRecord(
-            nhi=data.get('nhi'), patient_name=data.get('patient_name'), leave_date=date.today(),
-            leave_time=datetime.now(), expected_return_time=datetime.now() + timedelta(minutes=duration),
+            nhi=data.get('nhi'), patient_name=data.get('patient_name'), leave_date=now.date(),
+            leave_time=now, expected_return_time=now + timedelta(minutes=duration),
             leave_type=data.get('leave_type'), duration_minutes=duration, leave_description=data.get('leave_description'),
             is_escorted_leave=data.get('is_escorted_leave'), is_special_patient=person.is_special_patient,
             staff_responsible_id=staff_responsible_id, staff_nurse_id=staff_mse_id,
@@ -356,6 +368,37 @@ def update_ui_texts():
         print(f"Error in update_ui_texts: {e}")
         return jsonify({"error": "An internal error occurred."}), 500
 
+@app.route('/api/notices/add', methods=['POST'])
+def add_new_notice():
+    data = request.json
+    notice_text = data.get('notice_text')
+    expiry_date_str = data.get('expiry_date')
+    
+    if not notice_text or not expiry_date_str:
+        return jsonify({"error": "Missing notice text or expiry date"}), 400
+        
+    try:
+        expiry_date = datetime.strptime(expiry_date_str, "%d/%m/%Y").date()
+        success = notice_manager.add_notice(notice_text, expiry_date)
+        if success:
+            return jsonify({"message": "Notice added successfully"}), 201
+        else:
+            return jsonify({"error": "Failed to add notice to database"}), 500
+    except Exception as e:
+        print(f"Error adding notice: {e}")
+        return jsonify({"error": "An internal error occurred"}), 500
+
+@app.route('/api/admin/clear-leave-returns', methods=['POST'])
+def clear_all_leave_returns():
+    try:
+        success = person_manager.clear_all_leave_returns()
+        if success:
+            return jsonify({"message": "All leave return fields cleared"}), 200
+        else:
+            return jsonify({"error": "Failed to clear leave return fields"}), 500
+    except Exception as e:
+        print(f"Error clearing leave returns: {e}")
+        return jsonify({"error": "An internal error occurred"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

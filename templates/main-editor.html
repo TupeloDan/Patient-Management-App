@@ -16,15 +16,14 @@
 
     <div class="main-editor-layout">
         <div class="patient-list-column">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h2>Occupied Rooms</h2>
-                
+            <h2>Occupied Rooms</h2>
+            
+            <div class="action-bar">
+                <a href="/management?action=assign" class="header-button">Assign New</a>
+                <a id="manage-selected-link" href="#" class="header-button hidden">Manage Selected</a>
+                <a href="/admin" class="header-button">Admin Tasks</a>
             </div>
-            <div>
-                    <a href="/management?action=assign">Assign New</a>
-                    <a id="manage-selected-link" href="#" class="hidden" style="margin-left: 10px;">Manage Selected</a>
-                     <a href="/text-editor" style="margin-left: 10px;">Edit UI Text</a>
-                </div>
+
             <div id="patient-list-container"></div>
         </div>
 
@@ -125,7 +124,7 @@
                 </div>
             </div>
         </div>
-        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>

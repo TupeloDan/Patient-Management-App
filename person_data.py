@@ -306,6 +306,11 @@ class PersonData:
                 cursor.close()
                 conn.close()
         return person
+    
+    def clear_all_leave_returns(self) -> bool:
+        """Sets the LeaveReturn field to NULL for all records in the People table."""
+        sql = "UPDATE People SET LeaveReturn = NULL"
+        return self._execute_update(sql, ())
 
     def _execute_update(self, sql: str, values: tuple) -> bool:
         """A private helper to run simple update queries."""

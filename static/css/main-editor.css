@@ -32,6 +32,11 @@
     color: white;
     font-weight: bold;
 }
+
+#patient-list-container {
+    margin-top: 15px;
+}
+
 .details-header-container {
     display: flex;
     align-items: center;
@@ -166,11 +171,8 @@ hr {
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    /* MODIFIED: Use viewport width for better scaling */
     width: 80vw; 
-    /* MODIFIED: Set a max-width for very large screens */
     max-width: 950px; 
-    /* NEW: Add a max-height and scroll for smaller screens */
     max-height: 90vh;
     overflow-y: auto;
 }
@@ -208,4 +210,28 @@ hr {
 }
 .checklist-container .form-group div {
     margin-left: 10px;
+}
+
+.action-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.header-button {
+    display: inline-block;
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: white !important;
+    background-color: #007bff;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    text-align: center;
+}
+
+.header-button:hover {
+    background-color: #0056b3;
+    color: white !important;
 }

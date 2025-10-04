@@ -22,3 +22,24 @@ class NoticeData:
                 cursor.close()
                 conn.close()
         return notices
+    def add_notice(self, notice_text: str, expiry_date: date) -> bool:
+        
+        conn = get_db_connection()
+        if not conn: return False
+        try:
+            cursor = conn.cursor()
+            sql = "INSERT INTO Notices (NoticeText, ExpiryDate) VALUES (%s, %s)"
+            cursor.execute(sql, (notice_text, expiry_date))
+            conn.commit()
+            print(f"Successfully added notice: '{notice_text}'")
+            return True
+        except Exception as e:
+            print(f"Database error in add_notice: {e}")
+            conn.rollback()
+            return False
+        finally:
+            if conn and conn.is_connected():
+                cursor.close()
+                conn.close()
+    
+    
