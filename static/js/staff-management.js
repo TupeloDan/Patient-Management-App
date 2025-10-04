@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Elements ---
     const availableStaffList = document.getElementById('available-staff-list');
     const delegatedStaffList = document.getElementById('delegated-staff-list');
     const assignDelegatedBtn = document.getElementById('assign-delegated');
@@ -10,25 +11,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const staffRoleSelect = document.getElementById('staff-role-select');
     const saveStaffBtn = document.getElementById('save-staff-btn');
     const clearStaffFormBtn = document.getElementById('clear-staff-form-btn');
+    const roleSelect = document.getElementById('role-select');
+    const roleIdInput = document.getElementById('role-id');
+    const roleNameInput = document.getElementById('role-name');
+    const roleDescriptionInput = document.getElementById('role-description');
+    const saveRoleBtn = document.getElementById('save-role-btn');
+    const clearRoleFormBtn = document.getElementById('clear-role-form-btn');
 
     let allStaff = [];
     let allRoles = [];
     let delegatedStaff = [];
+    // This is the correct list of roles eligible for delegation
     const delegatableRoles = ["RN", "ACNM", "Charge Nurse", "CNS"];
 
     async function initialize() {
         try {
+            // THIS IS THE FIX: We only fetch from the three working API endpoints.
             const [staffRes, rolesRes, delegatedRes] = await Promise.all([
                 fetch('/api/staff'),
                 fetch('/api/roles'),
                 fetch('/api/delegated-staff')
             ]);
+
+            if (!staffRes.ok || !rolesRes.ok || !delegatedRes.ok) {
+                throw new Error('Failed to fetch initial data. Check the network tab for failed requests.');
+            }
+
             allStaff = await staffRes.json();
             allRoles = await rolesRes.json();
             delegatedStaff = await delegatedRes.json();
+            
             populateForms();
         } catch (error) {
             console.error("Failed to initialize staff management page:", error);
+            alert("Error: Could not load data. Please check the console for more details.");
         }
     }
 
@@ -36,6 +52,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const delegatedIds = new Set(delegatedStaff.map(s => s.ID));
         availableStaffList.innerHTML = '';
         delegatedStaffList.innerHTML = '';
+
+        // This is the original, working logic for delegated staff.
+        // It filters the main staff list on the client side.
         const staffForDelegation = allStaff.filter(staff => delegatableRoles.includes(staff.Role));
 
         staffForDelegation.forEach(staff => {
@@ -58,11 +77,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         staffRoleSelect.innerHTML = '<option value="">Select a role...</option>';
+        roleSelect.innerHTML = '<option value="">Select a role to edit...</option>';
         allRoles.forEach(role => {
             const option = document.createElement('option');
             option.value = role.ID;
             option.textContent = role.Role;
-            staffRoleSelect.appendChild(option);
+            staffRoleSelect.appendChild(option.cloneNode(true));
+            roleSelect.appendChild(option);
         });
     }
 
@@ -76,6 +97,14 @@ document.addEventListener('DOMContentLoaded', () => {
         staffNameInput.value = '';
         staffRoleSelect.value = '';
         saveStaffBtn.textContent = 'Save New Staff';
+    }
+
+    function clearRoleEditForm() {
+        roleSelect.value = '';
+        roleIdInput.value = '';
+        roleNameInput.value = '';
+        roleDescriptionInput.value = '';
+        saveRoleBtn.textContent = 'Save New Role';
     }
 
     assignDelegatedBtn.addEventListener('click', () => moveSelectedOptions(availableStaffList, delegatedStaffList));
@@ -105,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
             clearStaffEditForm();
             return;
         }
-        
         const staffMember = allStaff.find(s => s.ID == selectedId);
         if (staffMember) {
             staffIdInput.value = staffMember.ID;
@@ -147,5 +175,55 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error saving staff member:', error);
         }
     });
+    
+    roleSelect.addEventListener('change', () => {
+        const selectedId = roleSelect.value;
+        if (!selectedId) {
+            clearRoleEditForm();
+            return;
+        }
+        const role = allRoles.find(r => r.ID == selectedId);
+        if (role) {
+            roleIdInput.value = role.ID;
+            roleNameInput.value = role.Role;
+            roleDescriptionInput.value = role.Description || '';
+            saveRoleBtn.textContent = 'Save Changes';
+        }
+    });
+
+    clearRoleFormBtn.addEventListener('click', clearRoleEditForm);
+
+    saveRoleBtn.addEventListener('click', async () => {
+        const roleId = roleIdInput.value;
+        const roleName = roleNameInput.value.trim();
+        const description = roleDescriptionInput.value.trim();
+
+        if (!roleName) {
+            alert("Please provide a role name.");
+            return;
+        }
+
+        const isUpdating = !!roleId;
+        const url = isUpdating ? `/api/roles/update/${roleId}` : '/api/roles/add';
+        const method = isUpdating ? 'PUT' : 'POST';
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role_name: roleName, description: description })
+            });
+            if (response.ok) {
+                alert(`Role ${isUpdating ? 'updated' : 'added'} successfully.`);
+                clearRoleEditForm();
+                await initialize();
+            } else {
+                alert('Failed to save role.');
+            }
+        } catch (error) {
+            console.error('Error saving role:', error);
+        }
+    });
+
     initialize();
 });

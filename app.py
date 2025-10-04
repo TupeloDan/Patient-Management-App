@@ -124,14 +124,30 @@ def get_ui_text():
     text_elements = ui_text_manager.get_ui_text_by_context(context)
     return jsonify(text_elements)
 
-# ... (the rest of your API routes are unchanged)
 
-# --- NEW STAFF AND ROLE MANAGEMENT ROUTES ---
 @app.route('/api/roles', methods=['GET'])
 def get_roles():
     roles = role_manager.get_all_roles()
     return jsonify(roles)
+@app.route('/api/roles/add', methods=['POST'])
+def add_role():
+    data = request.json
+    success = role_manager.add_role(data.get('role_name'), data.get('description'))
+    if success:
+        return jsonify({"message": "Role added successfully"}), 201
+    return jsonify({"error": "Failed to add role"}), 500
 
+@app.route('/api/roles/update/<int:role_id>', methods=['PUT'])
+def update_role(role_id):
+    data = request.json
+    success = role_manager.update_role(role_id, data.get('role_name'), data.get('description'))
+    if success:
+        return jsonify({"message": "Role updated successfully"}), 200
+    return jsonify({"error": "Failed to update role"}), 500
+@app.route('/api/delegatable-staff', methods=['GET'])
+def get_delegatable_staff():
+    staff = staff_manager.get_delegatable_staff()
+    return jsonify(staff)
 @app.route('/api/staff/add', methods=['POST'])
 def add_staff_member():
     data = request.json
