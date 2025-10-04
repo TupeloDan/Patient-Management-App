@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
 </head>
+
 <body>
     <header class="header-container">
         <h1>Admin Tasks</h1>
@@ -15,7 +17,7 @@
     </header>
 
     <main class="editor-container">
-        
+
         <div class="admin-section">
             <h2>UI Text Editor</h2>
             <div class="form-group">
@@ -27,11 +29,17 @@
                 </select>
             </div>
             <div id="text-fields-container" class="hidden">
-                </div>
+            </div>
             <div id="actions-container" class="form-actions hidden">
                 <button id="save-text-btn">Save Text Changes</button>
                 <button id="close-text-editor-btn" type="button" style="background-color: #6c757d;">Close</button>
             </div>
+        </div>
+        <h2>Staff & Role Management</h2>
+        <p>Add or edit staff members, roles, and manage delegated permissions.</p>
+        <div class="form-actions" style="text-align: left;">
+            <a href="/staff-management" class="back-button" style="background-color: #007bff;">Go to Staff
+                Management</a>
         </div>
 
         <hr>
@@ -55,8 +63,10 @@
 
         <div class="admin-section" style="border: 2px solid #ffc107; border-radius: 8px; padding: 15px;">
             <h2 style="color: #ffc107;">Maintenance Tasks</h2>
-            <p>This will manually clear the "Leave Return" status from all patients. Use this if a status is stuck due to an error.</p>
-            <button id="clear-leave-returns-btn" style="background-color: #ffc107; color: black;">Clear All Leave Returns</button>
+            <p>This will manually clear the "Leave Return" status from all patients. Use this if a status is stuck due
+                to an error.</p>
+            <button id="clear-leave-returns-btn" style="background-color: #ffc107; color: black;">Clear All Leave
+                Returns</button>
         </div>
 
     </main>
@@ -64,4 +74,5 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 </body>
+
 </html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
+</head>
+<body>
+    <header class="header-container">
+        <h1>Staff Management</h1>
+        <a href="/admin" class="back-button">Back to Admin</a>
+    </header>
+
+    <main class="editor-container">
+
+        <div class="admin-section">
+            <h2>Manage Delegated Staff</h2>
+            <p>Select staff from the 'Available' list and move them to the 'Delegated' list to grant them senior nurse permissions.</p>
+            <div class="assignment-columns">
+                <div class="staff-list-container">
+                    <h3>Available Staff</h3>
+                    <select id="available-staff-list" multiple></select>
+                </div>
+                <div class="assignment-buttons">
+                    <button id="assign-delegated">&gt;&gt;</button>
+                    <button id="remove-delegated">&lt;&lt;</button>
+                </div>
+                <div class="staff-list-container">
+                    <h3>Delegated Staff</h3>
+                    <select id="delegated-staff-list" multiple></select>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button id="save-delegated-btn">Save Delegated List</button>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="admin-section">
+            <h2>Manage Staff Members</h2>
+            <div class="form-group">
+                <label for="staff-select">Select Staff to Edit:</label>
+                <select id="staff-select">
+                    <option value="">Select a staff member...</option>
+                </select>
+            </div>
+            <div id="edit-staff-form">
+                <input type="hidden" id="staff-id">
+                <div class="form-group">
+                    <label for="staff-name">Staff Name:</label>
+                    <input type="text" id="staff-name" placeholder="Enter name for new staff...">
+                </div>
+                <div class="form-group">
+                    <label for="staff-role-select">Role:</label>
+                    <select id="staff-role-select"></select>
+                </div>
+                <div class="form-actions">
+                    <button id="save-staff-btn">Save New Staff</button>
+                    <button id="clear-staff-form-btn" type="button" style="background-color: #6c757d;">Clear / New</button>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="{{ url_for('static', filename='js/staff-management.js') }}"></script>
+</body>
+</html>
