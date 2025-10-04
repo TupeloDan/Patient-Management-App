@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const textFieldsContainer = document.getElementById('text-fields-container');
     const textActionsContainer = document.getElementById('actions-container');
     const saveTextBtn = document.getElementById('save-text-btn');
+    const closeTextEditorBtn = document.getElementById('close-text-editor-btn');
 
     // --- Add Notice Elements ---
     const noticeTextInput = document.getElementById('notice-text');
@@ -15,13 +16,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Cleanup Elements ---
     const clearLeaveReturnsBtn = document.getElementById('clear-leave-returns-btn');
 
+    // --- Helper function to close the text editor ---
+    function closeTextEditor() {
+        // THIS IS THE DEBUGGING ALERT
+        alert("Close button clicked!");
+
+        textFieldsContainer.classList.add('hidden');
+        textActionsContainer.classList.add('hidden');
+        contextSelect.value = ''; // Reset the dropdown
+    }
+
     // --- UI Text Editor Logic ---
     contextSelect.addEventListener('change', async () => {
         const context = contextSelect.value;
         if (!context) {
-            textFieldsContainer.innerHTML = '';
-            textFieldsContainer.classList.add('hidden');
-            textActionsContainer.classList.add('hidden');
+            closeTextEditor();
             return;
         }
 
@@ -70,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (response.ok) {
                 alert('UI text updated successfully!');
+                closeTextEditor();
             } else {
                 alert('Failed to update text.');
             }
@@ -77,6 +87,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error saving UI text:', error);
         }
     });
+
+    // Add event listener for the new close button
+    closeTextEditorBtn.addEventListener('click', closeTextEditor);
 
     // --- Add Notice Logic ---
     addNoticeBtn.addEventListener('click', async () => {

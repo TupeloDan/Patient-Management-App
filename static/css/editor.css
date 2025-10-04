@@ -9,6 +9,13 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+/* This targets the header on pages using this stylesheet */
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 .form-group {
     margin-bottom: 20px;
 }
@@ -19,11 +26,12 @@ label {
     font-weight: bold;
 }
 
-select {
+select, input[type="text"], textarea {
     width: 100%;
     padding: 8px;
     border-radius: 4px;
     border: 1px solid #ccc;
+    box-sizing: border-box;
 }
 
 .assignment-columns {
@@ -67,9 +75,28 @@ button:hover {
 .hidden {
     display: none;
 }
+
 /* Style for the dynamically created textareas in the text-editor */
 #text-fields-container .form-group textarea {
     width: 100%;
-    box-sizing: border-box; /* This prevents padding from making the box too wide */
-    min-height: 60px; /* Ensures a decent default height */
+    box-sizing: border-box; 
+    min-height: 60px;
+}
+
+/* Styles for the new back button */
+.back-button {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: white !important;
+    background-color: #6c757d;
+    text-decoration: none;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+.back-button:hover {
+    background-color: #5a6268;
+    color: white !important;
 }
