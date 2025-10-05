@@ -101,9 +101,9 @@ class PersonData:
 
         return results_list
 
-    def get_person_by_id(self, person_id: int) -> Person | None:
+    def get_person_by_id(self, person_id: int, force_refresh: bool = False) -> Person | None:
         """Retrieves a single person from the database by their ID."""
-        if person_id in self._people_cache:
+        if not force_refresh and person_id in self._people_cache:
             return self._people_cache.get(person_id)
 
         conn = get_db_connection()
@@ -254,12 +254,20 @@ class PersonData:
                 conn.close()
 
     def update_field(self, person_id: int, field_name: str, new_value) -> bool:
-        """Updates a single field for a person in the database."""
+    
         if field_name not in self.VALID_UPDATE_FIELDS:
             return False
         db_column_name = self.VALID_UPDATE_FIELDS[field_name]
         sql = f"UPDATE People SET `{db_column_name}` = %s WHERE ID = %s"
-        return self._execute_update(sql, (new_value, person_id))
+
+        success = self._execute_update(sql, (new_value, person_id))
+
+        if success:
+            # This clears the stale data from the cache after a successful save
+            if person_id in self._people_cache:
+                del self._people_cache[person_id]
+
+        return success
 
     def update_plan_due_date(self, person_id: int, completed_date: date) -> bool:
         """Calculates and updates the next treatment plan due date."""
@@ -275,7 +283,7 @@ class PersonData:
 
     def update_uds_due_date(self, person_id: int, last_test_date: date) -> bool:
         """Calculates and updates the next UDS due date based on frequency."""
-        person = self.get_person_by_id(person_id)
+        person = self.get_person_by_id(person_id, force_refresh=True)
         if not person: return False
         
         frequency = (person.uds_frequency or "WEEKLY").upper()
