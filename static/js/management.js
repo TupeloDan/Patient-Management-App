@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (response.ok) {
                 alert('Person assigned successfully');
-                window.location.href = '/main-editor';
+                //window.location.href = '/main-editor';
             } else {
                 alert('Error assigning person');
             }
@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (response.ok) {
                 alert('Details updated successfully');
-                window.location.href = '/main-editor';
+                //window.location.href = '/main-editor';
             } else {
                 alert('Error updating details');
             }
@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (response.ok) {
                 alert('Assignments saved successfully!');
-                window.location.href = '/main-editor';
+                //window.location.href = '/main-editor';
             } else {
                 alert('Failed to save assignments.');
             }
