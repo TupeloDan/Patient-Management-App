@@ -305,6 +305,7 @@ def add_new_notice():
     except Exception as e:
         print(f"Error adding notice: {e}")
         return jsonify({"error": "An internal error occurred"}), 500
+    
 
 @app.route('/api/admin/clear-leave-returns', methods=['POST'])
 def clear_all_leave_returns():
@@ -361,6 +362,41 @@ def update_role(role_id):
     success = role_manager.update_role(role_id, data.get('role_name'), data.get('description'))
     if success: return jsonify({"message": "Role updated successfully"}), 200
     return jsonify({"error": "Failed to update role"}), 500
+
+@app.route('/api/notices/all', methods=['GET'])
+def get_all_notices():
+    # Use json.dumps with the serial helper to handle date objects
+    notices = notice_manager.get_all_notices()
+    response_json = json.dumps(notices, default=json_serial)
+    return app.response_class(response=response_json, status=200, mimetype='application/json')
+
+@app.route('/api/notices/update/<int:notice_id>', methods=['PUT'])
+def update_existing_notice(notice_id):
+    data = request.json
+    notice_text = data.get('notice_text')
+    expiry_date_str = data.get('expiry_date')
+    if not notice_text or not expiry_date_str:
+        return jsonify({"error": "Missing notice text or expiry date"}), 400
+    try:
+        expiry_date = datetime.strptime(expiry_date_str, "%d/%m/%Y").date()
+        success = notice_manager.update_notice(notice_id, notice_text, expiry_date)
+        if success:
+            return jsonify({"message": "Notice updated successfully"}), 200
+        return jsonify({"error": "Failed to update notice"}), 500
+    except Exception as e:
+        print(f"Error updating notice: {e}")
+        return jsonify({"error": "An internal error occurred"}), 500
+
+@app.route('/api/notices/delete/<int:notice_id>', methods=['DELETE'])
+def delete_existing_notice(notice_id):
+    try:
+        success = notice_manager.delete_notice(notice_id)
+        if success:
+            return jsonify({"message": "Notice deleted successfully"}), 200
+        return jsonify({"error": "Failed to delete notice"}), 500
+    except Exception as e:
+        print(f"Error deleting notice: {e}")
+        return jsonify({"error": "An internal error occurred"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

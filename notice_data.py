@@ -10,11 +10,10 @@ class NoticeData:
         notices = []
         try:
             cursor = conn.cursor()
-            # The stored procedure expects today's date as an argument
-            cursor.callproc("sp_GetActiveNotices", (date.today(),))
-            for result in cursor.stored_results():
-                # Stored procedure returns rows, and we need the first item in each row
-                notices = [row[0] for row in result.fetchall()]
+            # This is the fix: Use a direct SQL query to get unexpired notices.
+            sql = "SELECT NoticeText FROM Notices WHERE ExpiryDate >= %s ORDER BY ExpiryDate DESC"
+            cursor.execute(sql, (date.today(),))
+            notices = [row[0] for row in cursor.fetchall()]
         except Exception as e:
             print(f"Database error in get_active_notices: {e}")
         finally:
@@ -22,8 +21,9 @@ class NoticeData:
                 cursor.close()
                 conn.close()
         return notices
+
     def add_notice(self, notice_text: str, expiry_date: date) -> bool:
-        
+        """Adds a new notice to the database."""
         conn = get_db_connection()
         if not conn: return False
         try:
@@ -41,5 +41,59 @@ class NoticeData:
             if conn and conn.is_connected():
                 cursor.close()
                 conn.close()
-    
-    
+
+    def get_all_notices(self) -> list[dict]:
+        """Fetches all notices, including expired ones."""
+        conn = get_db_connection()
+        if not conn: return []
+        notices = []
+        try:
+            cursor = conn.cursor(dictionary=True)
+            sql = "SELECT NoticeID, NoticeText, ExpiryDate FROM Notices ORDER BY ExpiryDate DESC"
+            cursor.execute(sql)
+            notices = cursor.fetchall()
+        except Exception as e:
+            print(f"Database error in get_all_notices: {e}")
+        finally:
+            if conn and conn.is_connected():
+                cursor.close()
+                conn.close()
+        return notices
+
+    def update_notice(self, notice_id: int, notice_text: str, expiry_date: date) -> bool:
+        """Updates an existing notice in the database."""
+        conn = get_db_connection()
+        if not conn: return False
+        try:
+            cursor = conn.cursor()
+            sql = "UPDATE Notices SET NoticeText = %s, ExpiryDate = %s WHERE NoticeID = %s"
+            cursor.execute(sql, (notice_text, expiry_date, notice_id))
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Database error in update_notice: {e}")
+            conn.rollback()
+            return False
+        finally:
+            if conn and conn.is_connected():
+                conn.close()
+                conn.close()
+
+    def delete_notice(self, notice_id: int) -> bool:
+        """Deletes a notice from the database."""
+        conn = get_db_connection()
+        if not conn: return False
+        try:
+            cursor = conn.cursor()
+            sql = "DELETE FROM Notices WHERE NoticeID = %s"
+            cursor.execute(sql, (notice_id,))
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Database error in delete_notice: {e}")
+            conn.rollback()
+            return False
+        finally:
+            if conn and conn.is_connected():
+                conn.close()
+                conn.close()
