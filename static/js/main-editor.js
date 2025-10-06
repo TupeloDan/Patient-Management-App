@@ -404,7 +404,40 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Could not verify patient's leave status. Please try again.");
         }
     });
+    
+    clothingDescLabel.addEventListener('click', async () => {
+        if (!selectedPatient) {
+            // This prevents errors if no patient is selected yet
+            return; 
+        }
 
+        try {
+            const response = await fetch(`/api/people/${selectedPatient.id}/last-leave-description`);
+            if (!response.ok) {
+                throw new Error('Could not fetch last leave description.');
+            }
+
+            const data = await response.json();
+            
+            if (data.last_description) {
+                clothingDescInput.value = data.last_description;
+                
+                // Optional: Add a subtle visual cue to show the action was successful
+                clothingDescInput.style.transition = 'background-color 0.2s ease-in-out';
+                clothingDescInput.style.backgroundColor = '#e8f5e9'; // Light green
+                setTimeout(() => {
+                    clothingDescInput.style.backgroundColor = ''; 
+                }, 500);
+
+            } else {
+                // Let the user know if there is no previous entry
+                alert('No previous leave description found for this patient.');
+            }
+        } catch (error) {
+            console.error('Error fetching last description:', error);
+            alert('An error occurred while fetching the last leave description.');
+        }
+    });
     viewReportBtn.addEventListener('click', () => {
         if (!selectedLeave) {
             alert('Please select a leave event from one of the lists first.');

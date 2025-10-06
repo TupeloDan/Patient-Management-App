@@ -206,3 +206,35 @@ class LeaveRecordData:
             if conn and conn.is_connected():
                 cursor.close()
                 conn.close()
+
+    def get_last_leave_description(self, nhi: str) -> str | None:
+        """Gets the leave description from the most recent leave record for a person."""
+        conn = get_db_connection()
+        if not conn or not nhi:
+            return None
+        
+        description = None
+        try:
+            # THE FIX: Use a dictionary cursor for consistency with the project
+            cursor = conn.cursor(dictionary=True) 
+            sql = """
+                SELECT LeaveDescription 
+                FROM LeaveLog 
+                WHERE NHI = %s 
+                AND LeaveDescription IS NOT NULL
+                ORDER BY LeaveDate DESC, LeaveTime DESC 
+                LIMIT 1
+            """
+            cursor.execute(sql, (nhi,))
+            result = cursor.fetchone()
+            if result:
+                # Access the result by column name
+                description = result['LeaveDescription'] 
+        except Exception as e:
+            print(f"Error in get_last_leave_description: {e}")
+        finally:
+            if conn and conn.is_connected():
+                cursor.close()
+                conn.close()
+        
+        return description
