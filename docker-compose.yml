@@ -1,20 +1,21 @@
-# Docker Compose file for a MySQL 8.0 server.
-
-
 services:
   mysql_db:
     image: mysql:8.0
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: tupel0 # <-- IMPORTANT: Change this!
-      MYSQL_DATABASE: PeopleAndLeaveDB # This creates our database automatically.
+      MYSQL_ROOT_PASSWORD: tupel0
+      MYSQL_DATABASE: PeopleAndLeaveDB
+      TZ: Pacific/Auckland
     ports:
-      # Exposes the MySQL port to your computer on the standard port 3306.
       - "3306:3306"
     volumes:
-      # This saves your database data so it persists even if the container is removed.
+      # This maps the volume (which we've named 'mysql-data' inside this file)
+      # to the correct path inside the container.
       - mysql-data:/var/lib/mysql
 
-# Defines the named volume for data persistence.
 volumes:
   mysql-data:
+    # This tells Docker Compose to use an existing volume from outside this project.
+    external: true
+    # This specifies the exact name of the existing volume you want to use.
+    name: db_migration_mysql-data

@@ -188,7 +188,7 @@ class PersonData:
 
         try:
             cursor = conn.cursor()
-            # THIS IS THE FIX: This now sends the correct 8 arguments in the right order.
+            
             args = (
                 new_person_details.nhi,
                 new_person_details.name,
