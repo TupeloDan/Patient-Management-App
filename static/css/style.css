@@ -186,4 +186,8 @@ td {
     font-weight: bold;
 }
 
-/* NEW: Apply a consistent border to all header and data cells */
+.overdue-leave {
+    color: #9C0006; /* Same red as .date-overdue */
+    font-weight: bold;
+}
+

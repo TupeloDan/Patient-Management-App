@@ -66,6 +66,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         entryDiv.classList.add('leave-entry');
                         const infoLine = document.createElement('p');
 
+                        // --- NEW LOGIC TO CHECK IF OVERDUE ---
+                        if (leave.expectedReturn) {
+                            const expectedReturnTime = new Date(leave.expectedReturn);
+                            const currentTime = new Date();
+                            if (currentTime > expectedReturnTime) {
+                                entryDiv.classList.add('overdue-leave');
+                            }
+                        }
+                        // --- END OF NEW LOGIC -
+
                         // THIS IS THE FIX: We no longer do any date parsing.
                         const leaveTime = leave.leaveTime || 'N/A';
                         
@@ -164,9 +174,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (dueTimeObject) {
                     const currentTime = new Date();
                     if (currentTime > dueTimeObject) {
-                        [0, 1, 15].forEach(i => row.cells[i].classList.add('font-alert-orange'));
+                        [0, 15].forEach(i => row.cells[i].classList.add('font-alert-orange'));
                     } else {
-                        [0, 1, 15].forEach(i => row.cells[i].classList.add('font-alert-yellow'));
+                        [0, 15].forEach(i => row.cells[i].classList.add('font-alert-yellow'));
                     }
                 }
             });

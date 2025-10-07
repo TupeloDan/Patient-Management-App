@@ -76,7 +76,8 @@ class LeaveRecordData:
                     l.DurationMinutes AS duration,
                     s.StaffName AS staffName,
                     l.ContactPhoneNumber AS contactPhone,
-                    l.LeaveDescription AS description
+                    l.LeaveDescription AS description,
+                    l.ExpectedReturnTime AS expectedReturn 
                 FROM LeaveLog l
                 JOIN People p ON l.NHI = p.NHI
                 LEFT JOIN Staff s ON l.StaffResponsibleID = s.ID
