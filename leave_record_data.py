@@ -31,11 +31,17 @@ class LeaveRecordData:
             leave_description=row.get("LeaveDescription"),
             contact_phone_number=row.get("ContactPhoneNumber"),
             file_name=row.get("FileName"),
-            mse=bool(row.get("MSE", False)),
-            risk=bool(row.get("Risk", False)),
+            # --- THE FIX: Read these fields as strings, not booleans ---
+            mse=row.get("MSE"),
+            risk=row.get("Risk"),
+            # --- (rest of the original fields) ---
             leave_conditions_met=bool(row.get("LeaveCondition", False)),
             awol_status=bool(row.get("AWOL", False)),
-            has_ward_contact_info=bool(row.get("HasContactInfo", False))
+            has_ward_contact_info=bool(row.get("HasContactInfo", False)),
+            # --- NEW: Load the historical staff names ---
+            staff_responsible_name=row.get("StaffResponsible_Name"),
+            staff_mse_name=row.get("StaffCompletingMSE_Name"),
+            shift_lead_name=row.get("ShiftLeadNotified_Name")
         )
 
     def get_leave_for_person(self, nhi: str) -> list[dict]:

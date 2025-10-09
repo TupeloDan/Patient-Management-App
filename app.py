@@ -305,14 +305,29 @@ def log_leave_return(leave_id):
         return_time = datetime.now()
         success = leave_manager.log_return(leave_id, return_time, signed_in_by_id)
         if not success: raise Exception("Failed to update LeaveLog in the database.")
+
+        # This now fetches the complete, correct record
         leave_record = leave_manager.get_leave_by_id(leave_id)
         if not leave_record: return jsonify({"error": "Leave record not found after update."}), 404
+
         person = person_manager.get_person_by_nhi(leave_record.nhi)
         if person: person_manager.update_field(person.id, 'leave_return', None)
+
+        
+        staff_details = {
+            'responsible_name': leave_record.staff_responsible_name,
+            'mse_staff_name': leave_record.staff_mse_name,
+            'senior_nurse_name': leave_record.shift_lead_name
+        }
+        
+      
         all_staff_list = staff_manager.get_all_staff()
-        staff_map = {staff['ID']: f"{staff['StaffName']} ({staff['Role']})" for staff in all_staff_list}
-        staff_details = {'responsible_name': staff_map.get(leave_record.staff_responsible_id), 'mse_staff_name': staff_map.get(leave_record.staff_nurse_id), 'senior_nurse_name': staff_map.get(leave_record.senior_nurse_id)}
-        return_details = {'return_time': return_time.strftime('%d-%m-%y %I:%M %p'), 'signed_in_by_name': staff_map.get(signed_in_by_id)}
+        staff_map = {staff['ID']: staff['StaffName'] for staff in all_staff_list}
+        return_details = {
+            'return_time': return_time.strftime('%d-%m-%y %I:%M %p'),
+            'signed_in_by_name': staff_map.get(signed_in_by_id)
+        }
+        
         create_leave_report(leave_record, person, staff_details, return_details)
         return jsonify({"message": "Patient return logged and report updated."}), 200
     except Exception as e:
