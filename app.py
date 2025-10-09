@@ -233,22 +233,64 @@ def remove_person_from_room(person_id):
 def add_leave():
     data = request.json
     if not data: return jsonify({"error": "Invalid data provided"}), 400
-    staff_responsible_id = data.get('staff_responsible_id')
-    staff_mse_id = data.get('staff_mse_id') or staff_responsible_id
+    
     try:
         person = person_manager.get_person_by_nhi(data.get('nhi'))
         if not person: return jsonify({"error": "Patient not found."}), 404
+
+        # Get all staff once to use as a lookup map
+        all_staff_list = staff_manager.get_all_staff()
+        staff_map = {staff['ID']: staff['StaffName'] for staff in all_staff_list}
+
+        # Get IDs from the incoming request
+        staff_responsible_id = data.get('staff_responsible_id')
+        staff_mse_id = data.get('staff_mse_id') or staff_responsible_id
+        senior_nurse_id = data.get('senior_nurse_id')
+
         duration = int(data.get('duration_minutes', 0))
         now = datetime.now()
-        new_leave = LeaveRecord(nhi=data.get('nhi'), patient_name=data.get('patient_name'), leave_date=now.date(), leave_time=now, expected_return_time=now + timedelta(minutes=duration), leave_type=data.get('leave_type'), duration_minutes=duration, leave_description=data.get('leave_description'), is_escorted_leave=data.get('is_escorted_leave'), is_special_patient=person.is_special_patient, staff_responsible_id=staff_responsible_id, staff_nurse_id=staff_mse_id, senior_nurse_id=data.get('senior_nurse_id'), contact_phone_number=data.get('contact_phone_number'), mse=data.get('mse_completed'), risk=data.get('risk_assessment_completed'), leave_conditions_met=data.get('leave_conditions_met'), awol_status=data.get('awol_aware'), has_ward_contact_info=data.get('contact_aware'))
+
+        new_leave = LeaveRecord(
+            nhi=data.get('nhi'), 
+            patient_name=data.get('patient_name'), 
+            leave_date=now.date(), 
+            leave_time=now, 
+            expected_return_time=now + timedelta(minutes=duration), 
+            leave_type=data.get('leave_type'), 
+            duration_minutes=duration, 
+            leave_description=data.get('leave_description'), 
+            is_escorted_leave=data.get('is_escorted_leave'), 
+            is_special_patient=person.is_special_patient, 
+            staff_responsible_id=staff_responsible_id, 
+            staff_nurse_id=staff_mse_id, 
+            senior_nurse_id=senior_nurse_id,
+            # --- POPULATE NEW NAME FIELDS ---
+            staff_responsible_name=staff_map.get(staff_responsible_id),
+            staff_mse_name=staff_map.get(staff_mse_id),
+            shift_lead_name=staff_map.get(senior_nurse_id),
+            # --- (rest of the fields) ---
+            contact_phone_number=data.get('contact_phone_number'), 
+            mse=data.get('mse_completed'), 
+            risk=data.get('risk_assessment_completed'), 
+            leave_conditions_met=data.get('leave_conditions_met'), 
+            awol_status=data.get('awol_aware'), 
+            has_ward_contact_info=data.get('contact_aware')
+        )
+        
         success = leave_manager.add_leave(new_leave)
         if not success or not new_leave.id: raise Exception("Failed to save the initial leave record to the database or get a valid ID.")
+        
         person_manager.update_field(person.id, 'leave_return', new_leave.expected_return_time)
-        all_staff_list = staff_manager.get_all_staff()
-        staff_map = {staff['ID']: f"{staff['StaffName']} ({staff['Role']})" for staff in all_staff_list}
-        staff_details = {'responsible_name': staff_map.get(new_leave.staff_responsible_id), 'mse_staff_name': staff_map.get(new_leave.staff_nurse_id), 'senior_nurse_name': staff_map.get(new_leave.senior_nurse_id)}
+        
+        staff_details = {
+            'responsible_name': new_leave.staff_responsible_name, 
+            'mse_staff_name': new_leave.staff_mse_name, 
+            'senior_nurse_name': new_leave.shift_lead_name
+        }
+        
         filename_only = create_leave_report(new_leave, person, staff_details)
         if filename_only: leave_manager.update_leave_filename(new_leave.id, filename_only)
+        
         return jsonify({"message": "Leave created and report generated successfully"}), 201
     except Exception as e:
         print(f"Error in the leave creation process: {e}")

@@ -30,3 +30,6 @@ class LeaveRecord:
     own_phone: bool = False
     file_name: str | None = None
     leave_description: str | None = None
+    staff_responsible_name: str | None = None
+    staff_mse_name: str | None = None
+    shift_lead_name: str | None = None

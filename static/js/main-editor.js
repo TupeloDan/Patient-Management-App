@@ -473,7 +473,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const phoneSelection = phoneRadio.value;
         const ownPhoneNumber = document.getElementById(`${context}-phone-number-input`).value.trim();
         const leaveType = addLeaveModal.querySelector(`input[name="${context}_leave_type"]:checked`).value;
-        
+        // --- NEW: Logic to get the full text from the selected radio button ---
+        const mseRadio = addLeaveModal.querySelector(`input[name="${context}_mse"]:checked`);
+        const mseText = mseRadio ? mseRadio.closest('label').textContent.trim() : null;
+
+        const riskRadio = addLeaveModal.querySelector(`input[name="${context}_risk"]:checked`);
+        const riskText = riskRadio ? riskRadio.closest('label').textContent.trim() : null;
         let contactPhoneNumber = null;
         if (phoneSelection === 'own') {
             contactPhoneNumber = ownPhoneNumber;
@@ -492,8 +497,10 @@ document.addEventListener('DOMContentLoaded', () => {
             is_escorted_leave: isEscorted, duration_minutes: duration, staff_responsible_id: staffResponsibleChoice.getValue(true),
             staff_mse_id: staffMseChoice.getValue(true), senior_nurse_id: shiftLeadChoice.getValue(true),
             leave_description: clothingDescInput.value.trim(), contact_phone_number: contactPhoneNumber,
-            mse_completed: addLeaveModal.querySelector(`input[name="${context}_mse"]:checked`)?.value === 'rn',
-            risk_assessment_completed: addLeaveModal.querySelector(`input[name="${context}_risk"]:checked`)?.value === 'rn',
+            // --- MODIFIED: Send the text instead of a boolean ---
+            mse_completed: mseText,
+            risk_assessment_completed: riskText,
+            // --- (rest of the fields) ---
             leave_conditions_met: addLeaveModal.querySelector(`input[name="${context}_leave_con"]`)?.checked || false,
             awol_aware: addLeaveModal.querySelector(`input[name="${context}_awol"]`)?.checked || false,
             contact_aware: true,

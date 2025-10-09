@@ -120,6 +120,9 @@ class LeaveRecordData:
                 new_leave.has_ward_contact_info,
                 new_leave.senior_nurse_id,
                 new_leave.contact_phone_number,
+                new_leave.staff_responsible_name,
+                new_leave.staff_mse_name,
+                new_leave.shift_lead_name,
                 0,
             )
             

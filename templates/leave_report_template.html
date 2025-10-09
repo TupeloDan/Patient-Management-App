@@ -53,8 +53,8 @@
         <div class="section">
             <h3>Pre-Leave Checks</h3>
             <div class="grid">
-                <span class="label">MSE Completed:</span><span><span class="checkbox">{% if leave_record.mse %}☑{% else %}☐{% endif %}</span> Yes</span>
-                <span class="label">Risk Assessment Completed:</span><span><span class="checkbox">{% if leave_record.risk %}☑{% else %}☐{% endif %}</span> Yes</span>
+                <span class="label">Mental State Exam:</span><span>{{ leave_record.mse or 'N/A' }}</span>
+                <span class="label">Risk Assessment:</span><span>{{ leave_record.risk or 'N/A' }}</span>
                 <span class="label">Aware of Leave Conditions:</span><span><span class="checkbox">{% if leave_record.leave_conditions_met %}☑{% else %}☐{% endif %}</span> Confirmed</span>
                 <span class="label">Aware of AWOL Conditions:</span><span><span class="checkbox">{% if leave_record.awol_status %}☑{% else %}☐{% endif %}</span> Confirmed</span>
             </div>
